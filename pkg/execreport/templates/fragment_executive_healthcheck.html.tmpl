@@ -5,16 +5,19 @@
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Avg Cycle Time</div>
       <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgCycleTime}}{{else}}—{{end}}</div>
+      <div style="font-size:.65rem;color:#888;margin-top:4px;">avg cycle time</div>
     </div>
 
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Throughput / Week</div>
       <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgThroughput}}{{else}}—{{end}}</div>
+      <div style="font-size:.65rem;color:#888;margin-top:4px;">issues / week</div>
     </div>
 
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Epics With Active Work</div>
       <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.ActiveEpics}}{{else}}—{{end}}</div>
+      <div style="font-size:.65rem;color:#888;margin-top:4px;">active epics</div>
     </div>
 
     {{if not .HideDeployFreq}}
