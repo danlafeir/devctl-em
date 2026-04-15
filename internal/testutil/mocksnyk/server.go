@@ -132,6 +132,11 @@ func (s *Server) handleIssues(w http.ResponseWriter, r *http.Request) {
 
 	all := s.Dataset.issues()
 
+	// Filter by scan_item.type when provided
+	if scanType := q.Get("scan_item.type"); scanType != "" {
+		all = filterByScanItemType(all, scanType)
+	}
+
 	// Filter by updated_after / updated_before for resolved issues
 	if after := q.Get("updated_after"); after != "" {
 		all = filterByUpdated(all, after, q.Get("updated_before"))
@@ -215,11 +220,21 @@ func issueToAPIData(iwp issueWithProject) map[string]any {
 			"scan_item": map[string]any{
 				"data": map[string]any{
 					"id":   iwp.ProjectID,
-					"type": "project",
+					"type": iwp.ScanItemType,
 				},
 			},
 		},
 	}
+}
+
+func filterByScanItemType(issues []issueWithProject, scanType string) []issueWithProject {
+	var result []issueWithProject
+	for _, iwp := range issues {
+		if iwp.ScanItemType == scanType {
+			result = append(result, iwp)
+		}
+	}
+	return result
 }
 
 func filterByUpdated(issues []issueWithProject, after, before string) []issueWithProject {

@@ -157,7 +157,7 @@ func TestCountOpenIssues_BasicCounts(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestCountOpenIssues_Deduplication(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestCountOpenIssues_SkipsNonOpen(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -273,7 +273,7 @@ func TestCountOpenIssues_IgnoredBreakdown(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestCountOpenIssues_ProjectTargetFallback(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -332,7 +332,7 @@ func TestCountOpenIssues_FixableUnfixable(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestListIssues_AllStatuses(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListIssues(context.Background(), from, to)
+	issues, err := client.ListIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestListIssues_IsIgnoredMapped(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListIssues(context.Background(), from, to)
+	issues, err := client.ListIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -435,7 +435,7 @@ func TestListResolvedIssues_FiltersToRange(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListResolvedIssues(context.Background(), from, to)
+	issues, err := client.ListResolvedIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -463,7 +463,7 @@ func TestListResolvedIssues_SkipsNonResolved(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListResolvedIssues(context.Background(), from, to)
+	issues, err := client.ListResolvedIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -488,7 +488,7 @@ func TestListResolvedIssues_SkipsZeroResolvedAt(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListResolvedIssues(context.Background(), from, to)
+	issues, err := client.ListResolvedIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -533,7 +533,7 @@ func TestCountOpenIssues_Pagination(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	counts, err := client.CountOpenIssues(context.Background())
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -565,7 +565,7 @@ func TestListIssues_Pagination(t *testing.T) {
 	}
 	client := newClient(mock)
 
-	issues, err := client.ListIssues(context.Background(), from, to)
+	issues, err := client.ListIssues(context.Background(), from, to, IssueFilter{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -586,7 +586,7 @@ func TestDoRequest_SetsAuthHeader(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	_, _ = client.ListIssues(context.Background(), from, to)
+	_, _ = client.ListIssues(context.Background(), from, to, IssueFilter{})
 
 	if len(mock.requests) == 0 {
 		t.Fatal("no requests made")
@@ -612,7 +612,7 @@ func TestDoRequest_AppendsVersionParam(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	_, _ = client.ListIssues(context.Background(), from, to)
+	_, _ = client.ListIssues(context.Background(), from, to, IssueFilter{})
 
 	if len(mock.requests) == 0 {
 		t.Fatal("no requests made")
@@ -642,7 +642,7 @@ func TestDoRequest_UsesFullURLForPagination(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	_, _ = client.ListIssues(context.Background(), from, to)
+	_, _ = client.ListIssues(context.Background(), from, to, IssueFilter{})
 
 	if len(mock.requests) < 2 {
 		t.Fatalf("expected 2 requests, got %d", len(mock.requests))

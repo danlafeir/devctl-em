@@ -451,6 +451,64 @@ func jqlWithDateRange(jql, from, to string) string {
 	return result
 }
 
+// stripBoardOnlyJQLClauses removes issuetype and resolutiondate clauses from a
+// flat AND-joined JQL string. Board filters include these to scope the board
+// view, but they shouldn't constrain the metrics queries.
+func stripBoardOnlyJQLClauses(jql string) string {
+	// Split on AND boundaries (handles typical flat board filter JQL).
+	// Each part is trimmed; parts whose leading field name is issuetype or
+	// resolutiondate are dropped.
+	parts := splitJQLAnd(jql)
+	kept := parts[:0]
+	for _, p := range parts {
+		field := strings.ToLower(strings.TrimLeft(p, " \t\""))
+		if strings.HasPrefix(field, "issuetype") || strings.HasPrefix(field, "resolutiondate") {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return strings.Join(kept, " AND ")
+}
+
+// splitJQLAnd splits a JQL string on top-level AND keywords (case-insensitive),
+// not splitting inside parentheses or quoted strings.
+func splitJQLAnd(jql string) []string {
+	var parts []string
+	depth := 0
+	inQuote := false
+	start := 0
+	upper := strings.ToUpper(jql)
+
+	for i := 0; i < len(jql); i++ {
+		c := jql[i]
+		if c == '\'' || c == '"' {
+			inQuote = !inQuote
+			continue
+		}
+		if inQuote {
+			continue
+		}
+		if c == '(' {
+			depth++
+			continue
+		}
+		if c == ')' {
+			depth--
+			continue
+		}
+		if depth == 0 && i+3 < len(jql) && upper[i:i+4] == " AND" {
+			after := i + 4
+			if after >= len(jql) || upper[after] == ' ' || upper[after] == '(' {
+				parts = append(parts, strings.TrimSpace(jql[start:i]))
+				i = after
+				start = i
+			}
+		}
+	}
+	parts = append(parts, strings.TrimSpace(jql[start:]))
+	return parts
+}
+
 // splitOrderBy splits a JQL string into the filter portion and the trailing
 // ORDER BY clause (if any). The returned orderBy includes the "ORDER BY" prefix.
 func splitOrderBy(jql string) (filter, orderBy string) {

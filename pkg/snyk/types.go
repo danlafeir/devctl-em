@@ -27,12 +27,19 @@ type Org struct {
 	Name string
 }
 
+// IssueFilter holds optional filters applied when querying issues from the Snyk API.
+type IssueFilter struct {
+	// ScanItemType restricts results to a specific scan origin, e.g. "cli" for CI/CLI scans.
+	// Leave empty to return issues from all scan types.
+	ScanItemType string
+}
+
 // OpenCounts holds the current total of open issues broken down by severity and fixability.
 type OpenCounts struct {
 	Critical, High, Medium, Low, Total int
 	Fixable, Unfixable                 int
 	Ignored, IgnoredFixable, IgnoredUnfixable int
-	// Exploitable counts (Proof of Concept maturity or higher)
+	// Exploitable counts ("Proof of Concept" or "Attacked" maturity)
 	ExploitableCritical, ExploitableHigh, ExploitableMedium, ExploitableLow int
 	ExploitableFixable, ExploitableUnfixable                                 int
 	ExploitableIgnoredFixable, ExploitableIgnoredUnfixable                   int
@@ -47,7 +54,7 @@ type Issue struct {
 	Status         string
 	IsFixable      bool
 	IsIgnored      bool
-	Exploitability string // "", "No Known Exploit", "Proof of Concept", "Functional", "High"
+	Exploitability string // "Not Defined", "Proof of Concept", "Attacked"
 	CreatedAt      time.Time
 	ResolvedAt     time.Time
 }

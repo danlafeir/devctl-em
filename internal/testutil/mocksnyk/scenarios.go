@@ -13,15 +13,15 @@ func SmallDataset() *Dataset {
 	base := time.Now().UTC().Truncate(24 * time.Hour)
 
 	// Mix of open and resolved issues across severities.
-	// Exploitable open issues: snyk-1 (critical/fixable), snyk-2 (high/fixable),
-	// snyk-3 (medium/unfixable), snyk-5 (high/ignored-unfixable) — gives ExploitableFixable=2,
+	// Exploitable open issues: snyk-1 (critical/fixable/Attacked), snyk-2 (high/fixable/PoC),
+	// snyk-3 (medium/unfixable/PoC), snyk-5 (high/ignored/Attacked) — gives ExploitableFixable=2,
 	// ExploitableCritical=1, ExploitableHigh=2, ExploitableMedium=1.
 	builders := []*IssueBuilder{
-		NewIssue("snyk-1").WithTitle("SQL Injection").WithSeverity("critical").AsFixable().WithExploitability("Functional"),
+		NewIssue("snyk-1").WithTitle("SQL Injection").WithSeverity("critical").AsFixable().WithExploitability("Attacked"),
 		NewIssue("snyk-2").WithTitle("Prototype Pollution").WithSeverity("high").AsFixable().WithExploitability("Proof of Concept"),
 		NewIssue("snyk-3").WithTitle("ReDoS").WithSeverity("medium").WithExploitability("Proof of Concept"),
 		NewIssue("snyk-4").WithTitle("Outdated Dependency").WithSeverity("low"),
-		NewIssue("snyk-5").WithTitle("Path Traversal").WithSeverity("high").AsIgnored().WithExploitability("Functional"),
+		NewIssue("snyk-5").WithTitle("Path Traversal").WithSeverity("high").AsIgnored().WithExploitability("Attacked"),
 
 		// Resolved issues
 		NewIssue("snyk-6").WithTitle("RCE in lodash").WithSeverity("critical").AsFixable().
@@ -36,7 +36,7 @@ func SmallDataset() *Dataset {
 
 	for _, b := range builders {
 		b.WithCreatedAt(base.Add(-30 * 24 * time.Hour))
-		issue, _ := b.Build()
+		issue, _, _ := b.Build()
 		ds.Issues = append(ds.Issues, issue)
 	}
 
@@ -66,10 +66,9 @@ func RealisticDataset() *Dataset {
 		"Directory Traversal", "SSRF", "XXE Injection",
 	}
 	exploitMaturity := []string{
-		"", "", "", "", // ~40% no known exploit
-		"Proof of Concept", "Proof of Concept", // ~20% PoC
-		"Functional",  // ~10% functional
-		"High",        // ~10% high
+		"Not Defined", "Not Defined", "Not Defined", "Not Defined", // ~40% not defined
+		"Proof of Concept", "Proof of Concept",                     // ~20% PoC
+		"Attacked", "Attacked",                                     // ~20% attacked
 	}
 
 	for i := 1; i <= 100; i++ {
@@ -102,7 +101,7 @@ func RealisticDataset() *Dataset {
 			b.WithStatus("resolved").WithResolvedAt(resolvedAt)
 		}
 
-		issue, _ := b.Build()
+		issue, _, _ := b.Build()
 		ds.Issues = append(ds.Issues, issue)
 	}
 

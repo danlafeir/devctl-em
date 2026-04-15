@@ -477,15 +477,19 @@ func fetchOrLoadSnykData(ctx context.Context, client *snykpkg.Client, from, to t
 		return issues, resolved, counts, nil
 	}
 
-	issues, err := client.ListIssues(ctx, from, to)
+	filter := snykpkg.IssueFilter{
+		ScanItemType: getConfigString("snyk.scan_item_type"),
+	}
+
+	issues, err := client.ListIssues(ctx, from, to, filter)
 	if err != nil {
 		return nil, nil, snykpkg.OpenCounts{}, err
 	}
-	resolved, err := client.ListResolvedIssues(ctx, from, to)
+	resolved, err := client.ListResolvedIssues(ctx, from, to, filter)
 	if err != nil {
 		return nil, nil, snykpkg.OpenCounts{}, err
 	}
-	counts, err := client.CountOpenIssues(ctx)
+	counts, err := client.CountOpenIssues(ctx, filter)
 	if err != nil {
 		return nil, nil, snykpkg.OpenCounts{}, err
 	}

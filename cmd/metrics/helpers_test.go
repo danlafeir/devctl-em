@@ -108,6 +108,60 @@ func TestSplitOrderBy(t *testing.T) {
 	}
 }
 
+// --- stripBoardOnlyJQLClauses ---
+
+func TestStripBoardOnlyJQLClauses(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "removes issuetype clause",
+			input: `project = PROJ AND issuetype in (Story, Bug) AND sprint in openSprints()`,
+			want:  `project = PROJ AND sprint in openSprints()`,
+		},
+		{
+			name:  "removes resolutiondate clause",
+			input: `project = PROJ AND resolutiondate >= "2024-01-01" AND assignee is not EMPTY`,
+			want:  `project = PROJ AND assignee is not EMPTY`,
+		},
+		{
+			name:  "removes both",
+			input: `project = PROJ AND issuetype = Story AND resolutiondate is EMPTY AND team = backend`,
+			want:  `project = PROJ AND team = backend`,
+		},
+		{
+			name:  "no matching clauses unchanged",
+			input: `project = PROJ AND sprint in openSprints()`,
+			want:  `project = PROJ AND sprint in openSprints()`,
+		},
+		{
+			name:  "issuetype only",
+			input: `issuetype in (Story, Task)`,
+			want:  ``,
+		},
+		{
+			name:  "case insensitive field name",
+			input: `project = PROJ AND IssueType = Story`,
+			want:  `project = PROJ`,
+		},
+		{
+			name:  "preserves parenthesised clauses",
+			input: `project = PROJ AND issuetype in (Story, Bug) AND (status = "In Progress" OR status = "Review")`,
+			want:  `project = PROJ AND (status = "In Progress" OR status = "Review")`,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stripBoardOnlyJQLClauses(tc.input)
+			if got != tc.want {
+				t.Errorf("\nwant %q\ngot  %q", tc.want, got)
+			}
+		})
+	}
+}
+
 // --- wrapString ---
 
 func TestWrapString_Short(t *testing.T) {

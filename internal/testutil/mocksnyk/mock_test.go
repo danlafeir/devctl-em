@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/danlafeir/em/internal/testutil/mocksnyk"
+	"github.com/danlafeir/em/pkg/snyk"
 )
 
 func TestSmallDataset_listIssues(t *testing.T) {
@@ -30,7 +31,7 @@ func TestSmallDataset_listIssues(t *testing.T) {
 
 	from := time.Now().AddDate(0, 0, -90)
 	to := time.Now()
-	issues, err := client.ListIssues(ctx, from, to)
+	issues, err := client.ListIssues(ctx, from, to, snyk.IssueFilter{})
 	if err != nil {
 		t.Fatalf("ListIssues: %v", err)
 	}
@@ -47,7 +48,7 @@ func TestSmallDataset_openCounts(t *testing.T) {
 	client := mocksnyk.NewClient(ts)
 	ctx := context.Background()
 
-	counts, err := client.CountOpenIssues(ctx)
+	counts, err := client.CountOpenIssues(ctx, snyk.IssueFilter{})
 	if err != nil {
 		t.Fatalf("CountOpenIssues: %v", err)
 	}

@@ -49,18 +49,20 @@ type IssueBuilder struct {
 	createdAt      time.Time
 	resolvedAt     time.Time
 	projectID      string
+	scanItemType   string
 }
 
-// NewIssue starts building a new Snyk issue.
+// NewIssue starts building a new Snyk issue. Defaults to scan item type "cli".
 func NewIssue(id string) *IssueBuilder {
 	return &IssueBuilder{
-		id:        id,
-		title:     "Vulnerability in " + id,
-		severity:  "high",
-		issueType: "vuln",
-		status:    "open",
-		createdAt: time.Now().Add(-30 * 24 * time.Hour),
-		projectID: "project-1",
+		id:           id,
+		title:        "Vulnerability in " + id,
+		severity:     "high",
+		issueType:    "vuln",
+		status:       "open",
+		createdAt:    time.Now().Add(-30 * 24 * time.Hour),
+		projectID:    "project-1",
+		scanItemType: "cli",
 	}
 }
 
@@ -114,8 +116,13 @@ func (b *IssueBuilder) WithProject(projectID string) *IssueBuilder {
 	return b
 }
 
-// Build returns the constructed snyk.Issue and the associated project ID.
-func (b *IssueBuilder) Build() (snyk.Issue, string) {
+func (b *IssueBuilder) WithScanItemType(t string) *IssueBuilder {
+	b.scanItemType = t
+	return b
+}
+
+// Build returns the constructed snyk.Issue and the associated project ID and scan item type.
+func (b *IssueBuilder) Build() (snyk.Issue, string, string) {
 	return snyk.Issue{
 		ID:             b.id,
 		Title:          b.title,
@@ -127,22 +134,23 @@ func (b *IssueBuilder) Build() (snyk.Issue, string) {
 		Exploitability: b.exploitability,
 		CreatedAt:      b.createdAt,
 		ResolvedAt:     b.resolvedAt,
-	}, b.projectID
+	}, b.projectID, b.scanItemType
 }
 
-// issueWithProject pairs an issue with its project ID (for JSON:API serialization).
+// issueWithProject pairs an issue with its project ID and scan item type (for JSON:API serialization).
 type issueWithProject struct {
-	Issue     snyk.Issue
-	ProjectID string
+	Issue        snyk.Issue
+	ProjectID    string
+	ScanItemType string // e.g. "cli", "project"
 }
 
-// issues returns all issues with their project IDs.
+// issues returns all issues with their project IDs and scan item types.
 func (ds *Dataset) issues() []issueWithProject {
 	// We store issues without project IDs, so use "project-1" for all.
 	// For datasets loaded from CSV, all issues belong to project-1.
 	out := make([]issueWithProject, len(ds.Issues))
 	for i, issue := range ds.Issues {
-		out[i] = issueWithProject{Issue: issue, ProjectID: "project-1"}
+		out[i] = issueWithProject{Issue: issue, ProjectID: "project-1", ScanItemType: "cli"}
 	}
 	return out
 }

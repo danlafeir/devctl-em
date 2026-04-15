@@ -107,10 +107,11 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 }
 
 
-// IsExploitable returns true for vulnerabilities with a known exploit (Proof of Concept or higher).
+// IsExploitable returns true for vulnerabilities with a known exploit.
+// Snyk exploit maturity levels that qualify: "Proof of Concept", "Attacked".
 func IsExploitable(maturity string) bool {
 	switch maturity {
-	case "Proof of Concept", "Functional", "High":
+	case "Proof of Concept", "Attacked":
 		return true
 	}
 	return false
@@ -225,7 +226,7 @@ func (c *Client) GetProjectTargetMap(ctx context.Context) (map[string]string, er
 // CountOpenIssues returns the current open issue counts broken down by severity,
 // deduplicated by (target, title, severity) to match the Snyk UI's per-target grouping.
 // Falls back to project-level deduplication if the projects endpoint is unavailable.
-func (c *Client) CountOpenIssues(ctx context.Context) (OpenCounts, error) {
+func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenCounts, error) {
 	projectTargets, err := c.GetProjectTargetMap(ctx)
 	if err != nil {
 		// Projects endpoint unavailable — use project IDs directly as dedup keys.
@@ -236,6 +237,9 @@ func (c *Client) CountOpenIssues(ctx context.Context) (OpenCounts, error) {
 
 	query := url.Values{}
 	query.Set("limit", "100")
+	if filter.ScanItemType != "" {
+		query.Set("scan_item.type", filter.ScanItemType)
+	}
 
 	type issueKey struct {
 		targetID string
@@ -353,7 +357,7 @@ func (c *Client) CountOpenIssues(ctx context.Context) (OpenCounts, error) {
 // ListResolvedIssues fetches issues resolved within the given date range.
 // It filters by update time to catch recently resolved issues, then returns
 // only those with status "resolved" and a resolved_at within the range.
-func (c *Client) ListResolvedIssues(ctx context.Context, from, to time.Time) ([]Issue, error) {
+func (c *Client) ListResolvedIssues(ctx context.Context, from, to time.Time, filter IssueFilter) ([]Issue, error) {
 	var all []Issue
 	path := fmt.Sprintf("/rest/orgs/%s/issues", url.PathEscape(c.credentials.OrgID))
 
@@ -361,6 +365,9 @@ func (c *Client) ListResolvedIssues(ctx context.Context, from, to time.Time) ([]
 	query.Set("limit", "100")
 	query.Set("updated_after", from.Format(time.RFC3339))
 	query.Set("updated_before", to.Format(time.RFC3339))
+	if filter.ScanItemType != "" {
+		query.Set("scan_item.type", filter.ScanItemType)
+	}
 
 	nextURL := ""
 	for {
@@ -419,7 +426,7 @@ func (c *Client) ListResolvedIssues(ctx context.Context, from, to time.Time) ([]
 }
 
 // ListIssues fetches all issues for the org within the given date range.
-func (c *Client) ListIssues(ctx context.Context, from, to time.Time) ([]Issue, error) {
+func (c *Client) ListIssues(ctx context.Context, from, to time.Time, filter IssueFilter) ([]Issue, error) {
 	var all []Issue
 	path := fmt.Sprintf("/rest/orgs/%s/issues", url.PathEscape(c.credentials.OrgID))
 
@@ -427,6 +434,9 @@ func (c *Client) ListIssues(ctx context.Context, from, to time.Time) ([]Issue, e
 	query.Set("limit", "100")
 	query.Set("created_after", from.Format(time.RFC3339))
 	query.Set("created_before", to.Format(time.RFC3339))
+	if filter.ScanItemType != "" {
+		query.Set("scan_item.type", filter.ScanItemType)
+	}
 
 	nextURL := ""
 	for {
