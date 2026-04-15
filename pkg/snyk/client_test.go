@@ -291,6 +291,44 @@ func TestCountOpenIssues_IgnoredBreakdown(t *testing.T) {
 	}
 }
 
+func TestCountOpenIssues_NoDoubleCounting_IgnoredAndNonIgnored(t *testing.T) {
+	// Same (target, title, severity) appears as both ignored and non-ignored.
+	// Non-ignored should win: counted once in open, not in ignored.
+	fixableCoord := []coordinate{{IsUpgradeable: true}}
+	mock := &mockHTTPDoer{
+		responses: []*http.Response{
+			newJSONResponse(200, projectListResponse{}),
+			newJSONResponse(200, issueListResponse{
+				Data: []issueData{
+					// ignored version arrives first
+					makeIssueData("i1", "proj-1", "same-vuln", "high", "open", true, fixableCoord),
+					// non-ignored version of the same key
+					makeIssueData("i2", "proj-1", "same-vuln", "high", "open", false, fixableCoord),
+				},
+			}),
+		},
+	}
+	client := newClient(mock)
+
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should appear exactly once, in the non-ignored bucket.
+	if counts.Total != 1 {
+		t.Errorf("Total: want 1, got %d", counts.Total)
+	}
+	if counts.Ignored != 0 {
+		t.Errorf("Ignored: want 0 (non-ignored wins), got %d", counts.Ignored)
+	}
+	if counts.IgnoredFixable != 0 {
+		t.Errorf("IgnoredFixable: want 0, got %d", counts.IgnoredFixable)
+	}
+	if counts.Fixable != 1 {
+		t.Errorf("Fixable: want 1, got %d", counts.Fixable)
+	}
+}
+
 func TestCountOpenIssues_ProjectTargetFallback(t *testing.T) {
 	// When project has no target mapping, falls back to projectID as targetID.
 	// Two issues from different projects but same title/severity → not deduped since different targetIDs.

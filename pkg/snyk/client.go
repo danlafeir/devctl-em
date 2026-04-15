@@ -117,6 +117,36 @@ func IsExploitable(maturity string) bool {
 	return false
 }
 
+// isExploitableDetails checks exploit maturity from a full exploitDetails value.
+// It checks every entry in MaturityLevels (the current API field), falling back
+// to the legacy scalar Maturity field when the array is empty.
+func isExploitableDetails(d exploitDetails) bool {
+	if len(d.MaturityLevels) > 0 {
+		for _, ml := range d.MaturityLevels {
+			if IsExploitable(ml.Level) {
+				return true
+			}
+		}
+		return false
+	}
+	return IsExploitable(d.Maturity)
+}
+
+// resolveMaturity returns a display string for the most relevant maturity level.
+// It prefers the primary entry from MaturityLevels, then any entry, then the
+// legacy Maturity scalar.
+func resolveMaturity(d exploitDetails) string {
+	for _, ml := range d.MaturityLevels {
+		if ml.Type == "primary" {
+			return ml.Level
+		}
+	}
+	if len(d.MaturityLevels) > 0 {
+		return d.MaturityLevels[0].Level
+	}
+	return d.Maturity
+}
+
 // isFixable returns true if any coordinate has a fix available.
 func isFixable(coords []coordinate) bool {
 	for _, c := range coords {
@@ -246,8 +276,14 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 		title    string
 		severity string
 	}
-	seenOpen := make(map[issueKey]bool)
-	seenIgnored := make(map[issueKey]bool)
+	// ignoredRecord stores what was counted when a key was first seen as ignored,
+	// so it can be reversed if a non-ignored instance of the same key appears later.
+	type ignoredRecord struct {
+		fixable     bool
+		exploitable bool
+	}
+	seenOpen    := make(map[issueKey]bool)
+	seenIgnored := make(map[issueKey]ignoredRecord)
 
 	var counts OpenCounts
 	nextURL := ""
@@ -282,13 +318,18 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 				severity: strings.ToLower(d.Attributes.EffectiveSeverityLevel),
 			}
 			if d.Attributes.Ignored {
-				if seenIgnored[key] {
+				// Skip if already counted in either bucket — non-ignored takes precedence.
+				if seenOpen[key] {
 					continue
 				}
-				seenIgnored[key] = true
+				if _, alreadySeen := seenIgnored[key]; alreadySeen {
+					continue
+				}
+				exploitable := isExploitableDetails(d.Attributes.ExploitDetails)
+				fixable := isFixable(d.Attributes.Coordinates)
+				seenIgnored[key] = ignoredRecord{fixable: fixable, exploitable: exploitable}
 				counts.Ignored++
-				exploitable := IsExploitable(d.Attributes.ExploitDetails.Maturity)
-				if isFixable(d.Attributes.Coordinates) {
+				if fixable {
 					counts.IgnoredFixable++
 					if exploitable {
 						counts.ExploitableIgnoredFixable++
@@ -304,10 +345,26 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 			if seenOpen[key] {
 				continue
 			}
+			// If this key was previously counted as ignored, undo those counts first.
+			if rec, wasIgnored := seenIgnored[key]; wasIgnored {
+				delete(seenIgnored, key)
+				counts.Ignored--
+				if rec.fixable {
+					counts.IgnoredFixable--
+					if rec.exploitable {
+						counts.ExploitableIgnoredFixable--
+					}
+				} else {
+					counts.IgnoredUnfixable--
+					if rec.exploitable {
+						counts.ExploitableIgnoredUnfixable--
+					}
+				}
+			}
 			seenOpen[key] = true
 			counts.Total++
 			fixable := isFixable(d.Attributes.Coordinates)
-			exploitable := IsExploitable(d.Attributes.ExploitDetails.Maturity)
+			exploitable := isExploitableDetails(d.Attributes.ExploitDetails)
 			if fixable {
 				counts.Fixable++
 				if exploitable {

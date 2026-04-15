@@ -69,9 +69,19 @@ type coordinate struct {
 	IsUpgradeable     bool `json:"is_upgradeable"`
 }
 
+// maturityLevel represents one entry in exploit_details.maturity_levels.
+type maturityLevel struct {
+	Level  string `json:"level"`
+	Format string `json:"format"` // e.g. "CVSSv3", "CVSSv4"
+	Type   string `json:"type"`   // e.g. "primary", "secondary"
+}
+
 // exploitDetails holds exploit maturity from the issues API response.
+// MaturityLevels is the current field (array, one entry per CVSS format).
+// Maturity is the legacy scalar field kept for backward compatibility.
 type exploitDetails struct {
-	Maturity string `json:"maturity"`
+	Maturity       string          `json:"maturity"`
+	MaturityLevels []maturityLevel `json:"maturity_levels"`
 }
 
 // issueAttributes holds attributes from the issues API response.

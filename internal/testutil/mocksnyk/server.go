@@ -214,7 +214,7 @@ func issueToAPIData(iwp issueWithProject) map[string]any {
 			"created_at":               issue.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			"resolved_at":              resolvedAt,
 			"coordinates":              coordinates,
-			"exploit_details":          map[string]any{"maturity": issue.Exploitability},
+			"exploit_details": buildExploitDetails(issue.Exploitability),
 		},
 		"relationships": map[string]any{
 			"scan_item": map[string]any{
@@ -224,6 +224,23 @@ func issueToAPIData(iwp issueWithProject) map[string]any {
 				},
 			},
 		},
+	}
+}
+
+// buildExploitDetails constructs the exploit_details API response object for a given maturity string.
+// It populates maturity_levels with a single primary entry (CVSSv4 format) plus the legacy maturity field.
+func buildExploitDetails(maturity string) map[string]any {
+	levels := []map[string]any{}
+	if maturity != "" && maturity != "Not Defined" {
+		levels = append(levels, map[string]any{
+			"level":  maturity,
+			"format": "CVSSv4",
+			"type":   "primary",
+		})
+	}
+	return map[string]any{
+		"maturity":        maturity,
+		"maturity_levels": levels,
 	}
 }
 
