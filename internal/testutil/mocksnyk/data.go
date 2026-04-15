@@ -121,8 +121,8 @@ func (b *IssueBuilder) WithScanItemType(t string) *IssueBuilder {
 	return b
 }
 
-// Build returns the constructed snyk.Issue and the associated project ID and scan item type.
-func (b *IssueBuilder) Build() (snyk.Issue, string, string) {
+// Build returns the constructed snyk.Issue.
+func (b *IssueBuilder) Build() snyk.Issue {
 	return snyk.Issue{
 		ID:             b.id,
 		Title:          b.title,
@@ -134,7 +134,7 @@ func (b *IssueBuilder) Build() (snyk.Issue, string, string) {
 		Exploitability: b.exploitability,
 		CreatedAt:      b.createdAt,
 		ResolvedAt:     b.resolvedAt,
-	}, b.projectID, b.scanItemType
+	}
 }
 
 // issueWithProject pairs an issue with its project ID and scan item type (for JSON:API serialization).

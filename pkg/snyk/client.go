@@ -147,6 +147,48 @@ func resolveMaturity(d exploitDetails) string {
 	return d.Maturity
 }
 
+// adjustExploitableSeverity increments or decrements the exploitable count
+// for the given severity level. delta should be +1 or -1.
+func adjustExploitableSeverity(counts *OpenCounts, severity string, delta int) {
+	switch severity {
+	case "critical":
+		counts.ExploitableCritical += delta
+	case "high":
+		counts.ExploitableHigh += delta
+	case "medium":
+		counts.ExploitableMedium += delta
+	case "low":
+		counts.ExploitableLow += delta
+	}
+}
+
+// adjustSeverity increments the severity count and, when exploitable, the
+// exploitable severity count for the given severity level.
+func adjustSeverity(counts *OpenCounts, severity string, exploitable bool) {
+	switch severity {
+	case "critical":
+		counts.Critical++
+		if exploitable {
+			counts.ExploitableCritical++
+		}
+	case "high":
+		counts.High++
+		if exploitable {
+			counts.ExploitableHigh++
+		}
+	case "medium":
+		counts.Medium++
+		if exploitable {
+			counts.ExploitableMedium++
+		}
+	case "low":
+		counts.Low++
+		if exploitable {
+			counts.ExploitableLow++
+		}
+	}
+}
+
 // isFixable returns true if any coordinate has a fix available.
 func isFixable(coords []coordinate) bool {
 	for _, c := range coords {
@@ -283,7 +325,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 		exploitable bool
 		severity    string
 	}
-	seenOpen    := make(map[issueKey]bool)
+	seenOpen    := make(map[issueKey]struct{})
 	seenIgnored := make(map[issueKey]ignoredRecord)
 
 	var counts OpenCounts
@@ -320,7 +362,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 			}
 			if d.Attributes.Ignored {
 				// Skip if already counted in either bucket — non-ignored takes precedence.
-				if seenOpen[key] {
+				if _, ok := seenOpen[key]; ok {
 					continue
 				}
 				if _, alreadySeen := seenIgnored[key]; alreadySeen {
@@ -342,20 +384,11 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					}
 				}
 				if exploitable {
-					switch key.severity {
-					case "critical":
-						counts.ExploitableCritical++
-					case "high":
-						counts.ExploitableHigh++
-					case "medium":
-						counts.ExploitableMedium++
-					case "low":
-						counts.ExploitableLow++
-					}
+					adjustExploitableSeverity(&counts, key.severity, 1)
 				}
 				continue
 			}
-			if seenOpen[key] {
+			if _, ok := seenOpen[key]; ok {
 				continue
 			}
 			// If this key was previously counted as ignored, undo those counts first.
@@ -374,19 +407,10 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					}
 				}
 				if rec.exploitable {
-					switch rec.severity {
-					case "critical":
-						counts.ExploitableCritical--
-					case "high":
-						counts.ExploitableHigh--
-					case "medium":
-						counts.ExploitableMedium--
-					case "low":
-						counts.ExploitableLow--
-					}
+					adjustExploitableSeverity(&counts, rec.severity, -1)
 				}
 			}
-			seenOpen[key] = true
+			seenOpen[key] = struct{}{}
 			counts.Total++
 			fixable := isFixable(d.Attributes.Coordinates)
 			exploitable := isExploitableDetails(d.Attributes.ExploitDetails)
@@ -401,28 +425,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					counts.ExploitableUnfixable++
 				}
 			}
-			switch key.severity {
-			case "critical":
-				counts.Critical++
-				if exploitable {
-					counts.ExploitableCritical++
-				}
-			case "high":
-				counts.High++
-				if exploitable {
-					counts.ExploitableHigh++
-				}
-			case "medium":
-				counts.Medium++
-				if exploitable {
-					counts.ExploitableMedium++
-				}
-			case "low":
-				counts.Low++
-				if exploitable {
-					counts.ExploitableLow++
-				}
-			}
+			adjustSeverity(&counts, key.severity, exploitable)
 		}
 
 		if resp.Links.Next == "" {
@@ -480,7 +483,7 @@ func (c *Client) ListResolvedIssues(ctx context.Context, from, to time.Time, fil
 				IssueType:      d.Attributes.Type,
 				Status:         d.Attributes.Status,
 				IsFixable:      isFixable(d.Attributes.Coordinates),
-				Exploitability: d.Attributes.ExploitDetails.Maturity,
+				Exploitability: resolveMaturity(d.Attributes.ExploitDetails),
 			}
 			if t, err := time.Parse(time.RFC3339, d.Attributes.CreatedAt); err == nil {
 				issue.CreatedAt = t
@@ -547,7 +550,7 @@ func (c *Client) ListIssues(ctx context.Context, from, to time.Time, filter Issu
 				Status:         d.Attributes.Status,
 				IsFixable:      isFixable(d.Attributes.Coordinates),
 				IsIgnored:      d.Attributes.Ignored,
-				Exploitability: d.Attributes.ExploitDetails.Maturity,
+				Exploitability: resolveMaturity(d.Attributes.ExploitDetails),
 			}
 			if t, err := time.Parse(time.RFC3339, d.Attributes.CreatedAt); err == nil {
 				issue.CreatedAt = t

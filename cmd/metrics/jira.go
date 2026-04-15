@@ -475,17 +475,20 @@ func stripBoardOnlyJQLClauses(jql string) string {
 func splitJQLAnd(jql string) []string {
 	var parts []string
 	depth := 0
-	inQuote := false
+	var quoteChar byte
 	start := 0
 	upper := strings.ToUpper(jql)
 
 	for i := 0; i < len(jql); i++ {
 		c := jql[i]
-		if c == '\'' || c == '"' {
-			inQuote = !inQuote
+		if quoteChar != 0 {
+			if c == quoteChar {
+				quoteChar = 0
+			}
 			continue
 		}
-		if inQuote {
+		if c == '\'' || c == '"' {
+			quoteChar = c
 			continue
 		}
 		if c == '(' {

@@ -36,7 +36,7 @@ func SmallDataset() *Dataset {
 
 	for _, b := range builders {
 		b.WithCreatedAt(base.Add(-30 * 24 * time.Hour))
-		issue, _, _ := b.Build()
+		issue := b.Build()
 		ds.Issues = append(ds.Issues, issue)
 	}
 
@@ -101,7 +101,7 @@ func RealisticDataset() *Dataset {
 			b.WithStatus("resolved").WithResolvedAt(resolvedAt)
 		}
 
-		issue, _, _ := b.Build()
+		issue := b.Build()
 		ds.Issues = append(ds.Issues, issue)
 	}
 
