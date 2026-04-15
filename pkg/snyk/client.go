@@ -281,6 +281,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 	type ignoredRecord struct {
 		fixable     bool
 		exploitable bool
+		severity    string
 	}
 	seenOpen    := make(map[issueKey]bool)
 	seenIgnored := make(map[issueKey]ignoredRecord)
@@ -327,7 +328,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 				}
 				exploitable := isExploitableDetails(d.Attributes.ExploitDetails)
 				fixable := isFixable(d.Attributes.Coordinates)
-				seenIgnored[key] = ignoredRecord{fixable: fixable, exploitable: exploitable}
+				seenIgnored[key] = ignoredRecord{fixable: fixable, exploitable: exploitable, severity: key.severity}
 				counts.Ignored++
 				if fixable {
 					counts.IgnoredFixable++
@@ -338,6 +339,18 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					counts.IgnoredUnfixable++
 					if exploitable {
 						counts.ExploitableIgnoredUnfixable++
+					}
+				}
+				if exploitable {
+					switch key.severity {
+					case "critical":
+						counts.ExploitableCritical++
+					case "high":
+						counts.ExploitableHigh++
+					case "medium":
+						counts.ExploitableMedium++
+					case "low":
+						counts.ExploitableLow++
 					}
 				}
 				continue
@@ -358,6 +371,18 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					counts.IgnoredUnfixable--
 					if rec.exploitable {
 						counts.ExploitableIgnoredUnfixable--
+					}
+				}
+				if rec.exploitable {
+					switch rec.severity {
+					case "critical":
+						counts.ExploitableCritical--
+					case "high":
+						counts.ExploitableHigh--
+					case "medium":
+						counts.ExploitableMedium--
+					case "low":
+						counts.ExploitableLow--
 					}
 				}
 			}

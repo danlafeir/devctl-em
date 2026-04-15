@@ -123,6 +123,17 @@ func makeIssueData(id, projectID, title, severity, status string, ignored bool, 
 	}
 }
 
+func makeIssueDataWithExploit(id, projectID, title, severity, status string, ignored bool, coords []coordinate, maturity string) issueData {
+	d := makeIssueData(id, projectID, title, severity, status, ignored, coords)
+	d.Attributes.ExploitDetails = exploitDetails{
+		Maturity: maturity,
+		MaturityLevels: []maturityLevel{
+			{Level: maturity, Format: "CVSSv4", Type: "primary"},
+		},
+	}
+	return d
+}
+
 func TestCountOpenIssues_BasicCounts(t *testing.T) {
 	// No projects pagination, then issues with one of each severity.
 	mock := &mockHTTPDoer{
@@ -326,6 +337,59 @@ func TestCountOpenIssues_NoDoubleCounting_IgnoredAndNonIgnored(t *testing.T) {
 	}
 	if counts.Fixable != 1 {
 		t.Errorf("Fixable: want 1, got %d", counts.Fixable)
+	}
+}
+
+func TestCountOpenIssues_ExploitableConsistency(t *testing.T) {
+	// Verifies that exploitable counts are consistent across both dimensions:
+	//   severity sum  == fixability sum  == ExploitableTotal
+	// Uses a mix of ignored and non-ignored, fixable and unfixable, across severities.
+	exploitCoord := []coordinate{{IsUpgradeable: true}}
+	mock := &mockHTTPDoer{
+		responses: []*http.Response{
+			newJSONResponse(200, projectListResponse{}),
+			newJSONResponse(200, issueListResponse{
+				Data: []issueData{
+					// non-ignored, fixable, critical, exploitable
+					makeIssueDataWithExploit("a1", "proj-1", "vuln-a", "critical", "open", false, exploitCoord, "Attacked"),
+					// non-ignored, unfixable, high, exploitable
+					makeIssueDataWithExploit("a2", "proj-1", "vuln-b", "high", "open", false, nil, "Proof of Concept"),
+					// ignored, fixable, medium, exploitable
+					makeIssueDataWithExploit("a3", "proj-1", "vuln-c", "medium", "open", true, exploitCoord, "Attacked"),
+					// ignored, unfixable, low, NOT exploitable
+					makeIssueData("a4", "proj-1", "vuln-d", "low", "open", true, nil),
+				},
+			}),
+		},
+	}
+	client := newClient(mock)
+
+	counts, err := client.CountOpenIssues(context.Background(), IssueFilter{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	severitySum := counts.ExploitableCritical + counts.ExploitableHigh + counts.ExploitableMedium + counts.ExploitableLow
+	fixabilitySum := counts.ExploitableFixable + counts.ExploitableUnfixable + counts.ExploitableIgnoredFixable + counts.ExploitableIgnoredUnfixable
+
+	if severitySum != fixabilitySum {
+		t.Errorf("exploitable severity sum (%d) != fixability sum (%d)", severitySum, fixabilitySum)
+	}
+	// 3 exploitable issues total (a1 critical, a2 high, a3 medium/ignored)
+	if severitySum != 3 {
+		t.Errorf("want 3 total exploitable, got %d", severitySum)
+	}
+	if counts.ExploitableCritical != 1 {
+		t.Errorf("ExploitableCritical: want 1, got %d", counts.ExploitableCritical)
+	}
+	if counts.ExploitableHigh != 1 {
+		t.Errorf("ExploitableHigh: want 1, got %d", counts.ExploitableHigh)
+	}
+	if counts.ExploitableMedium != 1 {
+		t.Errorf("ExploitableMedium: want 1 (ignored), got %d", counts.ExploitableMedium)
+	}
+	if counts.ExploitableIgnoredFixable != 1 {
+		t.Errorf("ExploitableIgnoredFixable: want 1, got %d", counts.ExploitableIgnoredFixable)
 	}
 }
 
