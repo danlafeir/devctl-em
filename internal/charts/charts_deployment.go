@@ -126,6 +126,40 @@ func DeploymentFrequencyLineHTML(data metrics.ThroughputResult, failures metrics
 	})
 }
 
+// DeploymentSummary holds pre-computed values for the GitHub deployment summary widget.
+type DeploymentSummary struct {
+	AvgDeployFreq      string
+	AvgFailedPipelines string
+	HasFailureData     bool
+	DeployFreqTrend    string
+	FailureTrend       string
+	Weeks              int
+}
+
+// DeploymentSummaryHTML returns an HTML fragment summarising deploy frequency and failed pipelines.
+func DeploymentSummaryHTML(deployments metrics.ThroughputResult, failures metrics.ThroughputResult, weeks int) (template.HTML, error) {
+	avgDeploy := "—"
+	if deployments.AvgCount > 0 {
+		avgDeploy = fmt.Sprintf("%.1f", deployments.AvgCount)
+	}
+	avgFail := "—"
+	if failures.AvgCount > 0 {
+		avgFail = fmt.Sprintf("%.1f", failures.AvgCount)
+	}
+	if weeks <= 0 {
+		weeks = 6
+	}
+	s := DeploymentSummary{
+		AvgDeployFreq:      avgDeploy,
+		AvgFailedPipelines: avgFail,
+		HasFailureData:     len(failures.Periods) > 0,
+		DeployFreqTrend:    PeriodsTrendFrom(deployments.Periods),
+		FailureTrend:       PeriodsTrendFrom(failures.Periods),
+		Weeks:              weeks,
+	}
+	return renderHTML("fragment_deployment_summary.html.tmpl", s)
+}
+
 // DeploymentFrequencyLine creates an HTML page with a deployment frequency line chart.
 func DeploymentFrequencyLine(data metrics.ThroughputResult, failures metrics.ThroughputResult, cfg Config, path string) error {
 	title := cfg.Title

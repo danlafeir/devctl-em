@@ -33,7 +33,7 @@
         <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasDeployData}}{{.AvgDeployFreq}}{{else}}—{{end}}</span>
         {{if and .HasDeployData .DeployFreqTrend}}<span style="font-size:1rem;{{if eq .DeployFreqTrend "up"}}color:#16a34a;{{else if eq .DeployFreqTrend "down"}}color:#dc2626;{{else}}color:#aaa;{{end}}">{{if eq .DeployFreqTrend "up"}}↗{{else if eq .DeployFreqTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
       </div>
-      <div style="font-size:.7rem;color:#888;margin-top:4px;">{{if .HasDeployData}}{{.LastWeekDeploys}} last week{{else}}—{{end}}</div>
+      <div style="font-size:.7rem;color:#888;margin-top:4px;">{{if .HasDeployData}}deployments / week{{else}}—{{end}}</div>
     </div>
     {{end}}
 

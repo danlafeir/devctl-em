@@ -1,0 +1,23 @@
+<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+  <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Summary</div>
+  <div style="display:flex;gap:32px;flex-wrap:wrap;">
+    <div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgDeployFreq}}</span>
+        {{if .DeployFreqTrend}}<span style="font-size:1rem;{{if eq .DeployFreqTrend "up"}}color:#16a34a;{{else if eq .DeployFreqTrend "down"}}color:#dc2626;{{else}}color:#aaa;{{end}}">{{if eq .DeployFreqTrend "up"}}↗{{else if eq .DeployFreqTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
+      <div style="font-size:.75rem;color:#888;margin-top:3px;">Avg Deploy Frequency / Week</div>
+    </div>
+    {{if .HasFailureData}}
+    <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
+    <div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgFailedPipelines}}</span>
+        {{if .FailureTrend}}<span style="font-size:1rem;{{if eq .FailureTrend "up"}}color:#dc2626;{{else if eq .FailureTrend "down"}}color:#16a34a;{{else}}color:#aaa;{{end}}">{{if eq .FailureTrend "up"}}↗{{else if eq .FailureTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
+      <div style="font-size:.75rem;color:#888;margin-top:3px;">Avg Failed Pipelines / Week</div>
+    </div>
+    {{end}}
+  </div>
+  <div style="font-size:.65rem;color:#aaa;margin-top:10px;">measured over the last {{.Weeks}} weeks</div>
+</div>

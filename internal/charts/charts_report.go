@@ -61,9 +61,10 @@ func CombinedTeamReport(
 	snykWeeks []SnykIssueWeek,
 	path string,
 ) error {
-	var dfHTML template.HTML
+	var dfHTML, dfSummaryHTML template.HTML
 	if len(deploymentData.Periods) > 0 {
 		dfHTML = chartOrError(DeploymentFrequencyLineHTML(deploymentData, deploymentFailures, "Deployment Frequency"))
+		dfSummaryHTML = chartOrError(DeploymentSummaryHTML(deploymentData, deploymentFailures, summary.Weeks))
 	}
 
 	var snykSummaryHTML, snykChartHTML template.HTML
@@ -76,7 +77,7 @@ func CombinedTeamReport(
 	avgDeployFreq := "—"
 	lastWeekDeploys := 0
 	if deploymentData.AvgCount > 0 {
-		avgDeployFreq = fmt.Sprintf("%.1f/wk", deploymentData.AvgCount)
+		avgDeployFreq = fmt.Sprintf("%.1f", deploymentData.AvgCount)
 	}
 	if n := len(deploymentData.Periods); n > 0 {
 		lastWeekDeploys = deploymentData.Periods[n-1].Count
@@ -106,7 +107,8 @@ func CombinedTeamReport(
 		"Title":               title,
 		"ExecHealthcheckHTML": chartOrError(execreport.ExecHealthcheckHTML(hc)),
 		"SummaryHTML":         chartOrError(ReportSummaryHTML(summary)),
-		"DeploymentHTML":      dfHTML,
+		"DeploymentSummaryHTML": dfSummaryHTML,
+		"DeploymentHTML":        dfHTML,
 		"CycleTimeHTML":       chartOrError(CycleTimeScatterHTML(cycleTimeData, cycleTimePercentiles, "Cycle Time Distribution")),
 		"ThroughputHTML":      chartOrError(ThroughputLineHTML(throughputData, "Weekly Throughput")),
 		"LongestCTHTML":       chartOrError(LongestCycleTimeTableHTML(longestCTRows, "Longest Cycle Times", jiraBaseURL)),
