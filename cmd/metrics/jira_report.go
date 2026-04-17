@@ -39,6 +39,7 @@ func runReport(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	fmt.Println("Testing JIRA connection...")
 	if err := client.TestConnection(ctx); err != nil {
 		return fmt.Errorf("failed to connect to JIRA: %w", err)
 	}
@@ -164,12 +165,14 @@ func collectJIRAMetricsData(ctx context.Context, client *jira.Client, team, jql 
 
 	// Summary metrics
 	summary := buildSummary(keptResults, throughputResult)
+	log("Counting active epics...\n")
 	summary.ActiveEpics = countActiveEpics(ctx, client, jql)
 
 	// Save data for future --use-saved-data runs (best effort).
 	_ = saveJiraCycleTimeData(cycleResults, outlierKeys, team)
 	_ = saveJiraThroughputData(throughputResult, team)
 	_ = saveJiraForecastData(forecastRows, team)
+	_ = saveJiraActiveEpics(summary.ActiveEpics, team)
 
 	return jiraMetricsData{
 		KeptResults:      keptResults,
@@ -197,6 +200,7 @@ func loadJIRAMetricsData(team string, client *jira.Client) (jiraMetricsData, err
 
 	ctRows := buildLongestCTRows(recentResults(ct.kept, 14), nil, reportLongestCTLimit)
 	summary := buildSummary(ct.kept, throughputResult)
+	summary.ActiveEpics = loadJiraActiveEpics(team)
 
 	baseURL := ""
 	if client != nil {
@@ -240,9 +244,11 @@ func buildSummary(cycleResults []pkgmetrics.CycleTimeResult, throughput pkgmetri
 		weeks = 6
 	}
 	return charts.ReportSummary{
-		AvgCycleTime:  avgCT,
-		AvgThroughput: avgTP,
-		Weeks:         weeks,
+		AvgCycleTime:    avgCT,
+		AvgThroughput:   avgTP,
+		Weeks:           weeks,
+		CycleTimeTrend:  charts.CycleTimeTrendFrom(cycleResults),
+		ThroughputTrend: charts.PeriodsTrendFrom(throughput.Periods),
 	}
 }
 
@@ -304,6 +310,7 @@ func generateReport(ctx context.Context, client *jira.Client, team, jql string, 
 		return err
 	}
 
+	fmt.Println("Generating report...")
 	return renderJIRAReport(team, data)
 }
 

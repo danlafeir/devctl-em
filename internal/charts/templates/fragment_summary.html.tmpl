@@ -2,12 +2,18 @@
   <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Summary</div>
   <div style="display:flex;gap:32px;flex-wrap:wrap;">
     <div>
-      <div style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgCycleTime}}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgCycleTime}}</span>
+        {{if .CycleTimeTrend}}<span style="font-size:1rem;{{if eq .CycleTimeTrend "up"}}color:#dc2626;{{else if eq .CycleTimeTrend "down"}}color:#16a34a;{{else}}color:#aaa;{{end}}">{{if eq .CycleTimeTrend "up"}}↗{{else if eq .CycleTimeTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
       <div style="font-size:.75rem;color:#888;margin-top:3px;">Avg Cycle Time</div>
     </div>
     <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
     <div>
-      <div style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgThroughput}}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.6rem;font-weight:600;color:#1a1a1a;line-height:1;">{{.AvgThroughput}}</span>
+        {{if .ThroughputTrend}}<span style="font-size:1rem;{{if eq .ThroughputTrend "up"}}color:#16a34a;{{else if eq .ThroughputTrend "down"}}color:#dc2626;{{else}}color:#aaa;{{end}}">{{if eq .ThroughputTrend "up"}}↗{{else if eq .ThroughputTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
       <div style="font-size:.75rem;color:#888;margin-top:3px;">Avg Throughput / Week</div>
     </div>
     <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>

@@ -24,6 +24,10 @@ func savedGithubDataPath(team string) string {
 	return output.Path(teamOutputName("github-deployment-data", team) + ".csv")
 }
 
+func savedGithubFailuresPath(team string) string {
+	return output.Path(teamOutputName("github-deployment-failures", team) + ".csv")
+}
+
 func savedJiraCycleTimePath(team string) string {
 	return output.Path(teamOutputName("jira-cycle-time-data", team) + ".csv")
 }
@@ -44,6 +48,10 @@ func savedDatadogSLOPath(team string) string {
 }
 func savedJiraForecastThroughputPath(team string) string {
 	return output.Path(teamOutputName("jira-forecast-throughput", team) + ".csv")
+}
+
+func savedJiraActiveEpicsPath(team string) string {
+	return output.Path(teamOutputName("jira-active-epics", team) + ".txt")
 }
 
 // ---- generic throughput CSV (shared by GitHub and JIRA throughput) ----
@@ -117,6 +125,42 @@ func loadDeploymentData(team string) (pkgmetrics.ThroughputResult, error) {
 		return pkgmetrics.ThroughputResult{}, fmt.Errorf("no saved GitHub deployment data: %w", err)
 	}
 	return r, nil
+}
+
+func saveDeploymentFailuresData(result pkgmetrics.ThroughputResult, team string) error {
+	return saveThroughputCSV(result, savedGithubFailuresPath(team))
+}
+
+func loadDeploymentFailuresData(team string) (pkgmetrics.ThroughputResult, error) {
+	r, err := loadThroughputCSV(savedGithubFailuresPath(team))
+	if err != nil {
+		return pkgmetrics.ThroughputResult{}, nil // failures file is optional; missing = no failures
+	}
+	return r, nil
+}
+
+// ---- JIRA active epics count ----
+
+func saveJiraActiveEpics(count int, team string) error {
+	f, err := output.Create(savedJiraActiveEpicsPath(team))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = fmt.Fprintf(f, "%d\n", count)
+	return err
+}
+
+func loadJiraActiveEpics(team string) int {
+	data, err := os.ReadFile(savedJiraActiveEpicsPath(team))
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 // ---- JIRA cycle time data ----

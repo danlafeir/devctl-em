@@ -4,13 +4,19 @@
 
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Avg Cycle Time</div>
-      <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgCycleTime}}{{else}}—{{end}}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgCycleTime}}{{else}}—{{end}}</span>
+        {{if and .HasJIRAData .CycleTimeTrend}}<span style="font-size:1rem;{{if eq .CycleTimeTrend "up"}}color:#dc2626;{{else if eq .CycleTimeTrend "down"}}color:#16a34a;{{else}}color:#aaa;{{end}}">{{if eq .CycleTimeTrend "up"}}↗{{else if eq .CycleTimeTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
       <div style="font-size:.65rem;color:#888;margin-top:4px;">avg cycle time</div>
     </div>
 
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Throughput / Week</div>
-      <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgThroughput}}{{else}}—{{end}}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgThroughput}}{{else}}—{{end}}</span>
+        {{if and .HasJIRAData .ThroughputTrend}}<span style="font-size:1rem;{{if eq .ThroughputTrend "up"}}color:#16a34a;{{else if eq .ThroughputTrend "down"}}color:#dc2626;{{else}}color:#aaa;{{end}}">{{if eq .ThroughputTrend "up"}}↗{{else if eq .ThroughputTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
       <div style="font-size:.65rem;color:#888;margin-top:4px;">issues / week</div>
     </div>
 
@@ -23,7 +29,10 @@
     {{if not .HideDeployFreq}}
     <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Deploy Frequency</div>
-      <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasDeployData}}{{.AvgDeployFreq}}{{else}}—{{end}}</div>
+      <div style="display:flex;align-items:baseline;gap:5px;">
+        <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasDeployData}}{{.AvgDeployFreq}}{{else}}—{{end}}</span>
+        {{if and .HasDeployData .DeployFreqTrend}}<span style="font-size:1rem;{{if eq .DeployFreqTrend "up"}}color:#16a34a;{{else if eq .DeployFreqTrend "down"}}color:#dc2626;{{else}}color:#aaa;{{end}}">{{if eq .DeployFreqTrend "up"}}↗{{else if eq .DeployFreqTrend "down"}}↘{{else}}→{{end}}</span>{{end}}
+      </div>
       <div style="font-size:.7rem;color:#888;margin-top:4px;">{{if .HasDeployData}}{{.LastWeekDeploys}} last week{{else}}—{{end}}</div>
     </div>
     {{end}}
@@ -32,18 +41,26 @@
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Snyk Vulnerabilities</div>
       {{if .HasSnykData}}
       <div style="display:flex;gap:16px;align-items:flex-start;">
-        <div>
-          <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .Critical 0}}color:#dc2626;{{else}}color:#111;{{end}}">{{.Critical}}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .Critical 0}}color:#dc2626;{{else}}color:#111;{{end}}">{{.Critical}}</div>
+            <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
+              <div style="font-size:.6rem;{{if gt .FixableCritical 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.FixableCritical}} fixable</div>
+              <div style="font-size:.6rem;margin-top:2px;{{if gt .ExploitableCritical 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableCritical}} exploitable</div>
+            </div>
+          </div>
           <div style="font-size:.65rem;color:#888;margin-top:4px;">Critical</div>
-          <div style="font-size:.6rem;margin-top:3px;color:#888;">{{.FixableCritical}} fixable</div>
-          <div style="font-size:.6rem;margin-top:2px;{{if gt .ExploitableCritical 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableCritical}} exploitable</div>
         </div>
         <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
-        <div>
-          <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .High 0}}color:#ea580c;{{else}}color:#111;{{end}}">{{.High}}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .High 0}}color:#ea580c;{{else}}color:#111;{{end}}">{{.High}}</div>
+            <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
+              <div style="font-size:.6rem;{{if gt .FixableHigh 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.FixableHigh}} fixable</div>
+              <div style="font-size:.6rem;margin-top:2px;{{if gt .ExploitableHigh 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableHigh}} exploitable</div>
+            </div>
+          </div>
           <div style="font-size:.65rem;color:#888;margin-top:4px;">High</div>
-          <div style="font-size:.6rem;margin-top:3px;color:#888;">{{.FixableHigh}} fixable</div>
-          <div style="font-size:.6rem;margin-top:2px;{{if gt .ExploitableHigh 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableHigh}} exploitable</div>
         </div>
       </div>
       {{else}}

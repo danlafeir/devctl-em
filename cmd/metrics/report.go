@@ -254,7 +254,8 @@ func fetchGitHubDeploymentsForReport(ctx context.Context, team string, from, to 
 		if err != nil {
 			return pkgmetrics.ThroughputResult{}, pkgmetrics.ThroughputResult{}
 		}
-		return result, pkgmetrics.ThroughputResult{}
+		failures, _ := loadDeploymentFailuresData(team)
+		return result, failures
 	}
 	client, err := getGithubClient()
 	if err != nil {

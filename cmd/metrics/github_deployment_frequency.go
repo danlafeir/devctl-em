@@ -255,6 +255,7 @@ func runDeploymentFrequency(cmd *cobra.Command, args []string) error {
 		if err := saveDeploymentData(weeklyData, ""); err == nil {
 			fmt.Printf("\nRaw data saved to: %s\n", savedGithubDataPath(""))
 		}
+		_ = saveDeploymentFailuresData(weeklyFailures, "")
 	}
 	if len(weeklyData.Periods) > 0 {
 		cfg := charts.Config{}
@@ -318,7 +319,8 @@ func fetchTeamDeploymentData(ctx context.Context, client *gh.Client, org, teamNa
 		if err != nil {
 			return metrics.ThroughputResult{}, metrics.ThroughputResult{}
 		}
-		return result, metrics.ThroughputResult{}
+		f, _ := loadDeploymentFailuresData(teamName)
+		return result, f
 	}
 
 	workflows, err := getConfiguredWorkflowsByTeam(teamName)
@@ -364,9 +366,11 @@ func fetchTeamDeploymentData(ctx context.Context, client *gh.Client, org, teamNa
 		}
 	}
 	result := aggregateWeeklyDeployments(allRuns, from, to)
+	failures = aggregateWeeklyDeployments(failedRuns, from, to)
 	if saveRawDataFlag {
 		_ = saveDeploymentData(result, teamName)
+		_ = saveDeploymentFailuresData(failures, teamName)
 	}
-	return result, aggregateWeeklyDeployments(failedRuns, from, to)
+	return result, failures
 }
 

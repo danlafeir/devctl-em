@@ -32,9 +32,16 @@ func runSnykReport(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var client *snykpkg.Client
-	if !useSavedDataFlag {
-		client, err = getSnykClient()
+	var issues, resolved []snykpkg.Issue
+	var openCounts snykpkg.OpenCounts
+
+	if useSavedDataFlag {
+		issues, resolved, openCounts, err = fetchOrLoadSnykData(ctx, nil, from, to)
+		if err != nil {
+			return fmt.Errorf("failed to load saved Snyk data: %w", err)
+		}
+	} else {
+		client, err := getSnykClient()
 		if err != nil {
 			return err
 		}
@@ -42,12 +49,36 @@ func runSnykReport(cmd *cobra.Command, args []string) error {
 		if err := client.TestConnection(ctx); err != nil {
 			return fmt.Errorf("failed to connect to Snyk: %w", err)
 		}
-		fmt.Printf("Fetching issues (%s to %s)...\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
-	}
 
-	issues, resolved, openCounts, err := fetchOrLoadSnykData(ctx, client, from, to)
-	if err != nil {
-		return fmt.Errorf("failed to fetch Snyk data: %w", err)
+		filter := snykpkg.IssueFilter{ScanItemType: getConfigString("snyk.scan_item_type")}
+
+		fmt.Printf("Fetching open issues (%s to %s)...\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
+		issues, err = client.ListIssues(ctx, from, to, filter)
+		if err != nil {
+			return fmt.Errorf("failed to fetch open issues: %w", err)
+		}
+		fmt.Printf("  %d issues found\n", len(issues))
+
+		fmt.Println("Fetching resolved issues...")
+		resolved, err = client.ListResolvedIssues(ctx, from, to, filter)
+		if err != nil {
+			return fmt.Errorf("failed to fetch resolved issues: %w", err)
+		}
+		fmt.Printf("  %d issues found\n", len(resolved))
+
+		fmt.Println("Counting current open vulnerabilities...")
+		openCounts, err = client.CountOpenIssues(ctx, filter)
+		if err != nil {
+			return fmt.Errorf("failed to count open issues: %w", err)
+		}
+		fmt.Printf("  Critical: %d, High: %d, Medium: %d, Low: %d\n",
+			openCounts.Critical, openCounts.High, openCounts.Medium, openCounts.Low)
+
+		if saveRawDataFlag {
+			_ = saveSnykIssueList(issues, savedSnykIssuesPath())
+			_ = saveSnykIssueList(resolved, savedSnykResolvedPath())
+			_ = saveSnykOpenCounts(openCounts)
+		}
 	}
 
 	summary := charts.SnykSummary{
@@ -86,11 +117,12 @@ func runSnykReport(cmd *cobra.Command, args []string) error {
 		title = orgName + " — Snyk Security Report"
 	}
 
+	fmt.Println("Generating report...")
 	if err := charts.SnykSectionReport(summary, weeks, title, outputPath); err != nil {
 		return fmt.Errorf("failed to generate report: %w", err)
 	}
 
-	fmt.Printf("\nReport generated: %s\n", outputPath)
+	fmt.Printf("Report generated: %s\n", outputPath)
 	openBrowser(outputPath)
 	return nil
 }

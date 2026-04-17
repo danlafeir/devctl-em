@@ -33,6 +33,9 @@ type ExecHealthcheck struct {
 	ExploitableHigh     int
 	HasSnykData         bool
 	Weeks               int
+	CycleTimeTrend      string // "up", "down", "flat", or "" (no data)
+	ThroughputTrend     string
+	DeployFreqTrend     string
 }
 
 // ExecHealthcheckHTML returns a self-contained HTML fragment for the Executive Healthcheck section.
