@@ -25,10 +25,13 @@ type ExecHealthcheck struct {
 	LastWeekDeploys int
 	HasDeployData   bool
 	HideDeployFreq  bool // omits the Deploy Frequency widget entirely when true
-	Exploitable     int  // total exploitable vulnerabilities
-	Critical        int  // total critical vulnerabilities
-	High            int  // total high vulnerabilities
-	HasSnykData     bool
+	Critical            int
+	FixableCritical     int
+	ExploitableCritical int
+	High                int
+	FixableHigh         int
+	ExploitableHigh     int
+	HasSnykData         bool
 }
 
 // ExecHealthcheckHTML returns a self-contained HTML fragment for the Executive Healthcheck section.

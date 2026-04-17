@@ -85,9 +85,12 @@ func CombinedTeamReport(
 		AvgDeployFreq:        avgDeployFreq,
 		LastWeekDeploys:      lastWeekDeploys,
 		HasDeployData:        len(deploymentData.Periods) > 0,
-		Exploitable: snykSummary.ExploitableTotal,
-		Critical:    snykSummary.Critical,
-		High:        snykSummary.High,
+		Critical:            snykSummary.Critical,
+		FixableCritical:     snykSummary.FixableCritical,
+		ExploitableCritical: snykSummary.ExploitableCritical,
+		High:                snykSummary.High,
+		FixableHigh:         snykSummary.FixableHigh,
+		ExploitableHigh:     snykSummary.ExploitableHigh,
 		HasSnykData:          len(snykWeeks) > 0,
 	}
 
