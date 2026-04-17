@@ -9,12 +9,13 @@ import (
 
 // LongestCycleTimeRow holds data for one row in the longest cycle time table.
 type LongestCycleTimeRow struct {
-	Key       string
-	Summary   string
-	Days      string
-	Started   string
-	Completed string
-	Outlier   bool
+	Key        string
+	Summary    string
+	Days       string
+	Started    string
+	Completed  string
+	Outlier    bool
+	InProgress bool
 }
 
 // CycleTimeScatterHTML returns a self-contained HTML fragment for the cycle time scatter chart.

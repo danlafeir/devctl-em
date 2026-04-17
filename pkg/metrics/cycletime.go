@@ -16,6 +16,7 @@ type CycleTimeResult struct {
 	CycleTime    time.Duration
 	StartDate    time.Time
 	EndDate      time.Time
+	InProgress   bool // true when the issue has started but not yet completed
 	StageDetails map[string]time.Duration // Time spent in each stage
 	// Raw JIRA fields
 	Assignee string
@@ -138,6 +139,51 @@ func (c *CycleTimeCalculator) calculateForIssue(history workflow.IssueHistory) *
 		Labels:       history.Labels,
 		EpicKey:      history.EpicKey,
 	}
+}
+
+// CalculateInProgress computes cycle time for issues that have started but not yet
+// completed, using now as the end point. Useful for surfacing long-running open work.
+func (c *CycleTimeCalculator) CalculateInProgress(histories []workflow.IssueHistory) []CycleTimeResult {
+	now := time.Now()
+	var results []CycleTimeResult
+
+	for _, history := range histories {
+		if history.Completed != nil {
+			continue
+		}
+
+		var startTime time.Time
+		foundStart := false
+		for _, t := range history.Transitions {
+			if !foundStart && t.ToStage == c.startStage {
+				startTime = t.Timestamp
+				foundStart = true
+			}
+		}
+		if !foundStart || !now.After(startTime) {
+			continue
+		}
+
+		stageDetails := c.mapper.TimeInStage(history)
+		bd := businessDaysBetween(startTime, now)
+		cycleTime := time.Duration(bd) * 24 * time.Hour
+
+		results = append(results, CycleTimeResult{
+			IssueKey:     history.Key,
+			IssueType:    history.Type,
+			Summary:      history.Summary,
+			CycleTime:    cycleTime,
+			StartDate:    startTime,
+			InProgress:   true,
+			StageDetails: stageDetails,
+			Assignee:     history.Assignee,
+			Priority:     history.Priority,
+			Labels:       history.Labels,
+			EpicKey:      history.EpicKey,
+		})
+	}
+
+	return results
 }
 
 // CalculateStats computes statistical summary of cycle times.

@@ -71,23 +71,30 @@ func generateLongestCycleTime(ctx context.Context, client *jira.Client, team, jq
 		return fmt.Errorf("failed to fetch issues: %w", err)
 	}
 
-	if len(histories) == 0 {
-		fmt.Println("No issues found matching the query.")
-		return nil
-	}
-
 	all, kept, _ := computeCycleTimeFromHistories(histories, mapper)
-
-	if len(all) == 0 {
-		fmt.Println("No completed issues found for cycle time calculation.")
-		return nil
-	}
 
 	if outlierCount := len(all) - len(kept); outlierCount > 0 {
 		fmt.Printf("Removed %d outlier(s) (beyond 2σ from mean)\n", outlierCount)
 	}
 
-	rows := buildLongestCTRows(kept, nil, defaultLongestCTLimit)
+	// Also include currently in-progress issues (not yet resolved).
+	jqlInProgress := fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect) AND resolution = Unresolved", jql)
+	fmt.Printf("\nFetching in-progress issues...\n")
+	fmt.Printf("JQL: %s\n", jqlInProgress)
+	historiesIP, _, err := fetchAndMapIssues(ctx, client, jqlInProgress)
+	if err != nil {
+		return fmt.Errorf("failed to fetch in-progress issues: %w", err)
+	}
+	inProgressResults := metrics.NewCycleTimeCalculator(mapper).CalculateInProgress(historiesIP)
+
+	combined := append(kept, inProgressResults...)
+
+	if len(combined) == 0 {
+		fmt.Println("No issues found for cycle time calculation.")
+		return nil
+	}
+
+	rows := buildLongestCTRows(combined, nil, defaultLongestCTLimit)
 
 	fmt.Printf("\nTop %d Longest Cycle Times\n", len(rows))
 	fmt.Printf("=========================\n\n")
@@ -143,13 +150,18 @@ func buildLongestCTRows(results []metrics.CycleTimeResult, outlierKeys map[strin
 	n := min(len(filtered), limit)
 	rows := make([]charts.LongestCycleTimeRow, 0, n)
 	for _, r := range filtered[:n] {
+		completed := r.EndDate.Format("Jan 02")
+		if r.InProgress {
+			completed = "—"
+		}
 		rows = append(rows, charts.LongestCycleTimeRow{
-			Key:       r.IssueKey,
-			Summary:   r.Summary,
-			Days:      fmt.Sprintf("%.1f", r.CycleTimeDays()),
-			Started:   r.StartDate.Format("Jan 02"),
-			Completed: r.EndDate.Format("Jan 02"),
-			Outlier:   outlierKeys[r.IssueKey],
+			Key:        r.IssueKey,
+			Summary:    r.Summary,
+			Days:       fmt.Sprintf("%.1f", r.CycleTimeDays()),
+			Started:    r.StartDate.Format("Jan 02"),
+			Completed:  completed,
+			Outlier:    outlierKeys[r.IssueKey],
+			InProgress: r.InProgress,
 		})
 	}
 	return rows
