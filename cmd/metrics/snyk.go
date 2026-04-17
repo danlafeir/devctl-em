@@ -74,7 +74,7 @@ func getSnykClient() (*snyk.Client, error) {
 
 // getSnykDateRange returns the from/to date range for Snyk commands.
 func getSnykDateRange() (time.Time, time.Time, error) {
-	return parseDateRange(snykFromFlag, snykToFlag)
+	return parseDateRange(snykFromFlag, snykToFlag, weeksFlag)
 }
 
 // getSnykOutputPath returns the output file path.

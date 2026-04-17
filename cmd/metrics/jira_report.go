@@ -235,9 +235,14 @@ func buildSummary(cycleResults []pkgmetrics.CycleTimeResult, throughput pkgmetri
 	if throughput.AvgCount > 0 {
 		avgTP = fmt.Sprintf("%.1f", throughput.AvgCount)
 	}
+	weeks := weeksFlag
+	if weeks <= 0 {
+		weeks = 6
+	}
 	return charts.ReportSummary{
 		AvgCycleTime:  avgCT,
 		AvgThroughput: avgTP,
+		Weeks:         weeks,
 	}
 }
 

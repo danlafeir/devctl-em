@@ -12,8 +12,8 @@ import (
 )
 
 // parseDateRange parses --from and --to flag strings into time.Time values.
-// Empty strings fall back to 42 days ago and now respectively.
-func parseDateRange(fromStr, toStr string) (time.Time, time.Time, error) {
+// Empty fromStr falls back to weeks*7 days ago; empty toStr falls back to now.
+func parseDateRange(fromStr, toStr string, weeks int) (time.Time, time.Time, error) {
 	var from, to time.Time
 	var err error
 
@@ -23,7 +23,10 @@ func parseDateRange(fromStr, toStr string) (time.Time, time.Time, error) {
 			return time.Time{}, time.Time{}, fmt.Errorf("invalid --from date: %w", err)
 		}
 	} else {
-		from = time.Now().AddDate(0, 0, -42)
+		if weeks <= 0 {
+			weeks = 6
+		}
+		from = time.Now().AddDate(0, 0, -weeks*7)
 	}
 
 	if toStr != "" {
@@ -64,6 +67,9 @@ var MetricsCmd = &cobra.Command{
 // Use with --use-saved-data on subsequent runs to replay reports without API calls.
 var saveRawDataFlag bool
 
+// weeksFlag controls how many weeks back reports look when --from is not set.
+var weeksFlag int
+
 func init() {
 	MetricsCmd.PersistentFlags().BoolVar(&useSavedDataFlag, "use-saved-data", false,
 		"Skip upstream API calls and regenerate reports from previously saved CSVs")
@@ -71,4 +77,5 @@ func init() {
 		"Save raw calculation data to CSV files after fetching (use with --use-saved-data to replay reports)")
 	MetricsCmd.PersistentFlags().BoolVar(&mockUpstreamFlag, "mock-upstream", false,
 		"Use in-process mock servers instead of real API endpoints (for testing/development without credentials)")
+	MetricsCmd.PersistentFlags().IntVar(&weeksFlag, "weeks", 6, "Number of weeks to look back (overridden by --from)")
 }

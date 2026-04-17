@@ -95,7 +95,7 @@ func getGithubTeams() []string {
 
 // getGithubDateRange returns the from/to date range for GitHub commands.
 func getGithubDateRange() (time.Time, time.Time, error) {
-	return parseDateRange(ghFromFlag, ghToFlag)
+	return parseDateRange(ghFromFlag, ghToFlag, weeksFlag)
 }
 
 // getGithubOutputPath returns the output file path.

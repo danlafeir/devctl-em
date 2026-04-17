@@ -11,7 +11,7 @@ import (
 // --- parseDateRange ---
 
 func TestParseDateRange_Defaults(t *testing.T) {
-	from, to, err := parseDateRange("", "")
+	from, to, err := parseDateRange("", "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestParseDateRange_Defaults(t *testing.T) {
 }
 
 func TestParseDateRange_Explicit(t *testing.T) {
-	from, to, err := parseDateRange("2025-01-15", "2025-03-31")
+	from, to, err := parseDateRange("2025-01-15", "2025-03-31", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -41,13 +41,13 @@ func TestParseDateRange_Explicit(t *testing.T) {
 }
 
 func TestParseDateRange_InvalidFrom(t *testing.T) {
-	if _, _, err := parseDateRange("not-a-date", ""); err == nil {
+	if _, _, err := parseDateRange("not-a-date", "", 0); err == nil {
 		t.Fatal("expected error for invalid --from")
 	}
 }
 
 func TestParseDateRange_InvalidTo(t *testing.T) {
-	if _, _, err := parseDateRange("", "not-a-date"); err == nil {
+	if _, _, err := parseDateRange("", "not-a-date", 0); err == nil {
 		t.Fatal("expected error for invalid --to")
 	}
 }

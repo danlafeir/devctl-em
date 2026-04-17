@@ -13,6 +13,7 @@ type ReportSummary struct {
 	AvgCycleTime  string
 	AvgThroughput string
 	ActiveEpics   int
+	Weeks         int
 }
 
 // ReportSummaryHTML returns a self-contained HTML fragment for the summary bar.
@@ -92,6 +93,7 @@ func CombinedTeamReport(
 		FixableHigh:         snykSummary.FixableHigh,
 		ExploitableHigh:     snykSummary.ExploitableHigh,
 		HasSnykData:          len(snykWeeks) > 0,
+		Weeks:                summary.Weeks,
 	}
 
 	return writeHTML(path, "team_report.html.tmpl", map[string]any{

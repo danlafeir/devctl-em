@@ -301,7 +301,7 @@ func getProjectJQL() (string, error) {
 
 // getDateRange returns the from/to date range.
 func getDateRange() (time.Time, time.Time, error) {
-	return parseDateRange(fromFlag, toFlag)
+	return parseDateRange(fromFlag, toFlag, weeksFlag)
 }
 
 // isDelivered returns true if the issue's status maps to the completed stage.

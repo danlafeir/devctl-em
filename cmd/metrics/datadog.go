@@ -87,7 +87,7 @@ func getDatadogTeam() string {
 
 // getDatadogDateRange returns the from/to date range for Datadog commands.
 func getDatadogDateRange() (time.Time, time.Time, error) {
-	return parseDateRange(ddFromFlag, ddToFlag)
+	return parseDateRange(ddFromFlag, ddToFlag, weeksFlag)
 }
 
 // getDatadogOutputPath returns the output file path.
