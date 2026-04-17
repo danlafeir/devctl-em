@@ -1,8 +1,11 @@
-<div style="display:flex;gap:16px;margin-bottom:20px;">
-  <div style="flex:3;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;">
-    <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Vulnerability Criticality</div>
-    <div style="display:flex;gap:32px;flex-wrap:wrap;">
-      <div style="min-width:125px;">
+<div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+  <div style="flex:0 0 auto;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px;">
+      <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;">Vulnerability Criticality</div>
+      <div style="font-size:.6rem;color:#aaa;white-space:nowrap;">Exploitable = Attacked or Proof of Concept exploit maturity level.</div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="min-width:125px;max-width:160px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
           <div style="font-size:1.6rem;font-weight:600;color:#dc2626;line-height:1;">{{.Critical}}</div>
           <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
@@ -13,7 +16,7 @@
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Critical</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
-      <div style="min-width:125px;">
+      <div style="min-width:125px;max-width:160px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
           <div style="font-size:1.6rem;font-weight:600;color:#ea580c;line-height:1;">{{.High}}</div>
           <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
@@ -24,7 +27,7 @@
         <div style="font-size:.75rem;color:#888;margin-top:3px;">High</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
-      <div style="min-width:125px;">
+      <div style="min-width:125px;max-width:160px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
           <div style="font-size:1.6rem;font-weight:600;color:#ca8a04;line-height:1;">{{.Medium}}</div>
           <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
@@ -35,7 +38,7 @@
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Medium</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
-      <div style="min-width:125px;">
+      <div style="min-width:125px;max-width:160px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
           <div style="font-size:1.6rem;font-weight:600;color:#1d4ed8;line-height:1;">{{.Low}}</div>
           <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
@@ -46,35 +49,31 @@
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Low</div>
       </div>
     </div>
-    <div style="font-size:.65rem;color:#aaa;margin-top:12px;">Exploitable = Attacked or Proof of Concept exploit maturity level.</div>
   </div>
-  <div style="flex:2;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;">
-    <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Vulnerability Fix Summary</div>
-    <div style="display:flex;gap:32px;flex-wrap:wrap;">
+  <div style="flex:0 0 auto;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;">
+    <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:12px;">
+      <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;">Vulnerability Fix Summary</div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
       <div>
         <div style="font-size:1.6rem;font-weight:600;color:#dc2626;line-height:1;">{{.IgnoredFixable}}</div>
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Ignored Fixable</div>
-        <div style="font-size:.7rem;margin-top:4px;{{if gt .ExploitableIgnoredFixable 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableIgnoredFixable}} exploitable</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
       <div>
         <div style="font-size:1.6rem;font-weight:600;color:#ea580c;line-height:1;">{{.Fixable}}</div>
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Fixable</div>
-        <div style="font-size:.7rem;margin-top:4px;{{if gt .ExploitableFixable 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableFixable}} exploitable</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
       <div>
         <div style="font-size:1.6rem;font-weight:600;color:#7c3aed;line-height:1;">{{.Unfixable}}</div>
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Unfixable</div>
-        <div style="font-size:.7rem;margin-top:4px;{{if gt .ExploitableUnfixable 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableUnfixable}} exploitable</div>
       </div>
       <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
       <div>
         <div style="font-size:1.6rem;font-weight:600;color:#16a34a;line-height:1;">{{.IgnoredUnfixable}}</div>
         <div style="font-size:.75rem;color:#888;margin-top:3px;">Ignored Unfixable</div>
-        <div style="font-size:.7rem;margin-top:4px;{{if gt .ExploitableIgnoredUnfixable 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.ExploitableIgnoredUnfixable}} exploitable</div>
       </div>
     </div>
-    <div style="font-size:.65rem;color:#aaa;margin-top:12px;">Exploitable = Attacked or Proof of Concept exploit maturity level.</div>
   </div>
 </div>

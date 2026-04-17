@@ -91,7 +91,8 @@ func snykIssuesChartConfig(weeks []SnykIssueWeek, title string) map[string]any {
 			"datasets": datasets,
 		},
 		"options": map[string]any{
-			"responsive": true,
+			"responsive":          true,
+				"maintainAspectRatio": false,
 			"plugins": map[string]any{
 				"title": map[string]any{
 					"display": true,

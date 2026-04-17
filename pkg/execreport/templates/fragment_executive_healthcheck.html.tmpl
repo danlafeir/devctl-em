@@ -1,8 +1,8 @@
 <div style="margin-bottom:28px;">
   <div style="font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Executive Healthcheck</div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+  <div style="display:flex;gap:20px;flex-wrap:wrap;">
 
-    <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
+    <div style="flex:0 0 auto;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Avg Cycle Time</div>
       <div style="display:flex;align-items:baseline;gap:5px;">
         <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgCycleTime}}{{else}}—{{end}}</span>
@@ -11,7 +11,7 @@
       <div style="font-size:.65rem;color:#888;margin-top:4px;">avg cycle time</div>
     </div>
 
-    <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
+    <div style="flex:0 0 auto;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Throughput / Week</div>
       <div style="display:flex;align-items:baseline;gap:5px;">
         <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.AvgThroughput}}{{else}}—{{end}}</span>
@@ -20,14 +20,14 @@
       <div style="font-size:.65rem;color:#888;margin-top:4px;">issues / week</div>
     </div>
 
-    <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
+    <div style="flex:0 0 auto;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Epics With Active Work</div>
       <div style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasJIRAData}}{{.ActiveEpics}}{{else}}—{{end}}</div>
       <div style="font-size:.65rem;color:#888;margin-top:4px;">active epics</div>
     </div>
 
     {{if not .HideDeployFreq}}
-    <div style="flex:1;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
+    <div style="flex:0 0 auto;min-width:110px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Deploy Frequency</div>
       <div style="display:flex;align-items:baseline;gap:5px;">
         <span style="font-size:1.5rem;font-weight:700;color:#111;line-height:1;">{{if .HasDeployData}}{{.AvgDeployFreq}}{{else}}—{{end}}</span>
@@ -37,12 +37,12 @@
     </div>
     {{end}}
 
-    <div style="flex:1;min-width:160px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
+    <div style="flex:0 0 auto;min-width:160px;border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;">
       <div style="font-size:.65rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Snyk Vulnerabilities</div>
       {{if .HasSnykData}}
       <div style="display:flex;gap:16px;align-items:flex-start;">
-        <div style="flex:1;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div style="flex:0 0 auto;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;">
             <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .Critical 0}}color:#dc2626;{{else}}color:#111;{{end}}">{{.Critical}}</div>
             <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
               <div style="font-size:.6rem;{{if gt .FixableCritical 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.FixableCritical}} fixable</div>
@@ -52,8 +52,8 @@
           <div style="font-size:.65rem;color:#888;margin-top:4px;">Critical</div>
         </div>
         <div style="width:1px;background:#e0e0e0;align-self:stretch;"></div>
-        <div style="flex:1;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div style="flex:0 0 auto;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;">
             <div style="font-size:1.5rem;font-weight:700;line-height:1;{{if gt .High 0}}color:#ea580c;{{else}}color:#111;{{end}}">{{.High}}</div>
             <div style="display:flex;flex-direction:column;padding-top:3px;text-align:right;">
               <div style="font-size:.6rem;{{if gt .FixableHigh 0}}color:#dc2626;font-weight:600;{{else}}color:#888;{{end}}">{{.FixableHigh}} fixable</div>

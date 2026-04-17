@@ -219,7 +219,7 @@ func bucketByWeek(issues []snyk.Issue, resolved []snyk.Issue, currentOpen, curre
 				WeekStart:        sorted[i].WeekStart,
 				Total:            currentOpen,
 				Fixable:          currentFixable,
-				Unfixable:        currentOpen - currentFixable,
+				Unfixable:        max(0, currentOpen-currentFixable),
 				IgnoredFixable:   currentIgnoredFixable,
 				IgnoredUnfixable: currentIgnoredUnfixable,
 			}
@@ -232,7 +232,7 @@ func bucketByWeek(issues []snyk.Issue, resolved []snyk.Issue, currentOpen, curre
 				WeekStart:        sorted[i].WeekStart,
 				Total:            total,
 				Fixable:          fixable,
-				Unfixable:        total - fixable,
+				Unfixable:        max(0, total-fixable),
 				IgnoredFixable:   ignoredFixable,
 				IgnoredUnfixable: ignoredUnfixable,
 			}
