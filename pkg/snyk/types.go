@@ -39,6 +39,8 @@ type OpenCounts struct {
 	Critical, High, Medium, Low, Total int
 	Fixable, Unfixable                 int
 	Ignored, IgnoredFixable, IgnoredUnfixable int
+	// Fixable counts per severity level
+	FixableCritical, FixableHigh, FixableMedium, FixableLow int
 	// Exploitable counts ("Proof of Concept" or "Attacked" maturity)
 	ExploitableCritical, ExploitableHigh, ExploitableMedium, ExploitableLow int
 	ExploitableFixable, ExploitableUnfixable                                 int

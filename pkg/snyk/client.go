@@ -162,6 +162,20 @@ func adjustExploitableSeverity(counts *OpenCounts, severity string, delta int) {
 	}
 }
 
+// adjustFixableSeverity increments the fixable count for the given severity level.
+func adjustFixableSeverity(counts *OpenCounts, severity string) {
+	switch severity {
+	case "critical":
+		counts.FixableCritical++
+	case "high":
+		counts.FixableHigh++
+	case "medium":
+		counts.FixableMedium++
+	case "low":
+		counts.FixableLow++
+	}
+}
+
 // adjustSeverity increments the severity count and, when exploitable, the
 // exploitable severity count for the given severity level.
 func adjustSeverity(counts *OpenCounts, severity string, exploitable bool) {
@@ -416,6 +430,7 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 			exploitable := isExploitableDetails(d.Attributes.ExploitDetails)
 			if fixable {
 				counts.Fixable++
+				adjustFixableSeverity(&counts, key.severity)
 				if exploitable {
 					counts.ExploitableFixable++
 				}

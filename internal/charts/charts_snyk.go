@@ -25,6 +25,11 @@ type SnykSummary struct {
 	Unfixable        int
 	IgnoredFixable   int
 	IgnoredUnfixable int
+	// Fixable counts per severity level
+	FixableCritical int
+	FixableHigh     int
+	FixableMedium   int
+	FixableLow      int
 	// Exploitable counts (Attacked or Proof of Concept exploit maturity level; ignored issues excluded from non-Ignored* fields)
 	ExploitableCritical         int
 	ExploitableHigh             int

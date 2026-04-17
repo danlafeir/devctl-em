@@ -410,7 +410,7 @@ func saveSnykOpenCounts(counts snykpkg.OpenCounts) error {
 	defer f.Close()
 	w := csv.NewWriter(f)
 	defer w.Flush()
-	_ = w.Write([]string{"total", "fixable", "unfixable", "ignored_fixable", "ignored_unfixable", "critical", "high", "medium", "low"})
+	_ = w.Write([]string{"total", "fixable", "unfixable", "ignored_fixable", "ignored_unfixable", "critical", "high", "medium", "low", "fixable_critical", "fixable_high", "fixable_medium", "fixable_low"})
 	err = w.Write([]string{
 		strconv.Itoa(counts.Total),
 		strconv.Itoa(counts.Fixable),
@@ -421,6 +421,10 @@ func saveSnykOpenCounts(counts snykpkg.OpenCounts) error {
 		strconv.Itoa(counts.High),
 		strconv.Itoa(counts.Medium),
 		strconv.Itoa(counts.Low),
+		strconv.Itoa(counts.FixableCritical),
+		strconv.Itoa(counts.FixableHigh),
+		strconv.Itoa(counts.FixableMedium),
+		strconv.Itoa(counts.FixableLow),
 	})
 	if err != nil {
 		return err
@@ -443,6 +447,12 @@ func loadSnykOpenCounts() (snykpkg.OpenCounts, error) {
 	}
 	row := rows[1]
 	atoi := func(s string) int { v, _ := strconv.Atoi(s); return v }
+	col := func(i int) int {
+		if i < len(row) {
+			return atoi(row[i])
+		}
+		return 0
+	}
 	return snykpkg.OpenCounts{
 		Total:            atoi(row[0]),
 		Fixable:          atoi(row[1]),
@@ -453,6 +463,10 @@ func loadSnykOpenCounts() (snykpkg.OpenCounts, error) {
 		High:             atoi(row[6]),
 		Medium:           atoi(row[7]),
 		Low:              atoi(row[8]),
+		FixableCritical:  col(9),
+		FixableHigh:      col(10),
+		FixableMedium:    col(11),
+		FixableLow:       col(12),
 	}, nil
 }
 
