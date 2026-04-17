@@ -109,18 +109,19 @@ func injectMockConfig() {
 
 	// Always override selected team and team list so commands use mock data,
 	// not any real team configuration the user may have saved.
-	set("selected_team", "platform")
-	set("team_names", []any{"platform"})
+	set("selected_team", "Mocked Team")
+	set("team_names", []any{"Mocked Team"})
 
 	// JIRA — project key matches mockjira issue keys ("PROJ-*")
 	set("jira.domain", "mock")
 	set("jira.email", "mock@test.com")
-	set("teams.platform.jira.project", "PROJ")
+	set("teams.Mocked Team.jira.project", "PROJ")
 
 	// GitHub — matches mockgithub.RealisticDataset()
 	set("github.org", "acme-org")
-	set("teams.platform.github.slug", "platform")
-	set("teams.platform.github.workflows.api-service", "deploy.yml")
+	set("teams.Mocked Team.github.slug", "platform")
+	set("teams.Mocked Team.github.workflows.api-service", "deploy.yml")
+	set("teams.Mocked Team.github.workflows.web-app", "deploy.yml")
 
 	// Snyk — matches mocksnyk.RealisticDataset()
 	set("snyk.org_id", "prod-org-id")
@@ -128,5 +129,5 @@ func injectMockConfig() {
 
 	// Datadog — matches mockdatadog.RealisticDataset() (team tag "team:platform")
 	set("datadog.site", "datadoghq.com") // overridden by BaseURLOverride in mock client
-	set("teams.platform.datadog.team", "platform")
+	set("teams.Mocked Team.datadog.team", "platform")
 }

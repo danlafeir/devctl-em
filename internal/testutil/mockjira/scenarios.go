@@ -1,6 +1,7 @@
 package mockjira
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
@@ -142,6 +143,67 @@ func RealisticDataset() *Dataset {
 		issue, changelog := b.Build()
 		ds.Issues = append(ds.Issues, issue)
 		ds.Changelogs[issue.Key] = changelog
+	}
+
+	// --- Closed epics (3) --- resolved, Done
+	closedEpics := []struct{ key, summary string }{
+		{"PROJ-E1", "Platform Migration (complete)"},
+		{"PROJ-E2", "Auth Redesign (complete)"},
+		{"PROJ-E3", "Observability Rollout (complete)"},
+	}
+	epicBase := base.AddDate(0, 0, -30)
+	for _, e := range closedEpics {
+		b := NewIssue(e.key).
+			WithType("Epic").
+			WithSummary(e.summary).
+			CreatedAt(epicBase)
+		b.AddTransition(epicBase.Add(24*time.Hour), "Open", "In Progress")
+		b.AddTransition(epicBase.Add(20*24*time.Hour), "In Progress", "Done")
+		issue, changelog := b.Build()
+		ds.Issues = append(ds.Issues, issue)
+		ds.Changelogs[issue.Key] = changelog
+	}
+
+	// --- Open epics (5) --- unresolved, In Progress
+	openEpics := []struct{ key, summary string }{
+		{"PROJ-E4", "API Performance Initiative"},
+		{"PROJ-E5", "Developer Experience Improvements"},
+		{"PROJ-E6", "Data Pipeline Reliability"},
+		{"PROJ-E7", "Security Hardening"},
+		{"PROJ-E8", "Mobile Parity Features"},
+	}
+	for i, e := range openEpics {
+		epicCreated := base.Add(time.Duration(i*5) * 24 * time.Hour)
+		b := NewIssue(e.key).
+			WithType("Epic").
+			WithSummary(e.summary).
+			CreatedAt(epicCreated)
+		b.AddTransition(epicCreated.Add(24*time.Hour), "Open", "In Progress")
+		issue, changelog := b.Build()
+		ds.Issues = append(ds.Issues, issue)
+		ds.Changelogs[issue.Key] = changelog
+	}
+
+	// --- Child stories for open epics (3 per epic: 2 in-progress, 1 done) ---
+	for i, e := range openEpics {
+		epicCreated := base.Add(time.Duration(i*5) * 24 * time.Hour)
+		for j := 0; j < 3; j++ {
+			childKey := fmt.Sprintf("PROJ-C%d%d", i+1, j+1)
+			childCreated := epicCreated.Add(time.Duration(j+1) * 48 * time.Hour)
+			b := NewIssue(childKey).
+				WithType("Story").
+				WithSummary(fmt.Sprintf("%s: child story %d", e.summary, j+1)).
+				WithParent(e.key, e.summary).
+				CreatedAt(childCreated)
+			b.AddTransition(childCreated.Add(24*time.Hour), "Open", "In Progress")
+			if j == 2 {
+				// Third child is done
+				b.AddTransition(childCreated.Add(4*24*time.Hour), "In Progress", "Done")
+			}
+			issue, changelog := b.Build()
+			ds.Issues = append(ds.Issues, issue)
+			ds.Changelogs[issue.Key] = changelog
+		}
 	}
 
 	return ds

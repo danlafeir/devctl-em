@@ -22,6 +22,8 @@ type IssueBuilder struct {
 	summary     string
 	createdAt   time.Time
 	transitions []transition
+	parentKey   string
+	parentSummary string
 }
 
 type transition struct {
@@ -42,6 +44,12 @@ func NewIssue(key string) *IssueBuilder {
 
 func (b *IssueBuilder) WithType(t string) *IssueBuilder {
 	b.issueType = t
+	return b
+}
+
+func (b *IssueBuilder) WithParent(key, summary string) *IssueBuilder {
+	b.parentKey = key
+	b.parentSummary = summary
 	return b
 }
 
@@ -101,6 +109,20 @@ func (b *IssueBuilder) Build() (jira.Issue, []jira.ChangelogEntry) {
 				Name: "Test Project",
 			},
 		},
+	}
+	if b.parentKey != "" {
+		issue.Fields.Parent = &jira.Parent{
+			ID:  b.parentKey,
+			Key: b.parentKey,
+			Fields: struct {
+				Summary   string    `json:"summary"`
+				Status    jira.Status    `json:"status"`
+				IssueType jira.IssueType `json:"issuetype"`
+			}{
+				Summary:   b.parentSummary,
+				IssueType: jira.IssueType{ID: issueTypeID("Epic"), Name: "Epic"},
+			},
+		}
 	}
 
 	// Build changelog entries

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -66,7 +67,8 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	expand := r.URL.Query().Get("expand")
 
-	issues := s.Dataset.Issues
+	jql := r.URL.Query().Get("jql")
+	issues := filterByJQL(s.Dataset.Issues, jql)
 	total := len(issues)
 
 	// Paginate
@@ -244,6 +246,66 @@ func (s *Server) handleBoards(w http.ResponseWriter, r *http.Request) {
 		"isLast":     isLast,
 		"values":     boards[startAt:end],
 	})
+}
+
+// filterByJQL applies lightweight JQL filtering covering the patterns em uses.
+// It handles: issuetype = X, issuetype in (...), resolution IS EMPTY,
+// parent = X, and parent in (...). Compound AND clauses are combined;
+// OR clauses (e.g. "Epic Link" = X OR parent = X) are handled by extracting
+// the parent predicate.
+func filterByJQL(issues []jira.Issue, jql string) []jira.Issue {
+	if jql == "" {
+		return issues
+	}
+	lower := strings.ToLower(jql)
+
+	// issuetype = X
+	var typeSet map[string]bool
+	if m := regexp.MustCompile(`(?i)issuetype\s*=\s*"?(\w+)"?`).FindStringSubmatch(jql); m != nil {
+		typeSet = map[string]bool{strings.ToLower(m[1]): true}
+	} else if m := regexp.MustCompile(`(?i)issuetype\s+in\s*\(([^)]+)\)`).FindStringSubmatch(jql); m != nil {
+		typeSet = make(map[string]bool)
+		for _, t := range strings.Split(m[1], ",") {
+			typeSet[strings.ToLower(strings.Trim(strings.TrimSpace(t), `"'`))] = true
+		}
+	}
+
+	// resolution IS EMPTY
+	resolutionEmpty := strings.Contains(lower, "resolution is empty")
+
+	// parent in (K1, K2, ...)
+	var parentSet map[string]bool
+	if m := regexp.MustCompile(`(?i)parent\s+in\s*\(([^)]+)\)`).FindStringSubmatch(jql); m != nil {
+		parentSet = make(map[string]bool)
+		for _, k := range strings.Split(m[1], ",") {
+			parentSet[strings.TrimSpace(k)] = true
+		}
+	} else if m := regexp.MustCompile(`(?i)parent\s*=\s*"?(\S+?)"?(?:\s|$|AND|OR)`).FindStringSubmatch(jql); m != nil {
+		// parent = X (single key)
+		parentSet = map[string]bool{strings.Trim(m[1], `"' `): true}
+	}
+
+	// No active filters → return as-is
+	if typeSet == nil && !resolutionEmpty && parentSet == nil {
+		return issues
+	}
+
+	filtered := make([]jira.Issue, 0, len(issues))
+	for _, issue := range issues {
+		if typeSet != nil && !typeSet[strings.ToLower(issue.Fields.IssueType.Name)] {
+			continue
+		}
+		if resolutionEmpty && issue.Fields.ResolutionDate != nil {
+			continue
+		}
+		if parentSet != nil {
+			if issue.Fields.Parent == nil || !parentSet[issue.Fields.Parent.Key] {
+				continue
+			}
+		}
+		filtered = append(filtered, issue)
+	}
+	return filtered
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
