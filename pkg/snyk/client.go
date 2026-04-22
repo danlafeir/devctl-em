@@ -147,21 +147,6 @@ func resolveMaturity(d exploitDetails) string {
 	return d.Maturity
 }
 
-// adjustExploitableSeverity increments or decrements the exploitable count
-// for the given severity level. delta should be +1 or -1.
-func adjustExploitableSeverity(counts *OpenCounts, severity string, delta int) {
-	switch severity {
-	case "critical":
-		counts.ExploitableCritical += delta
-	case "high":
-		counts.ExploitableHigh += delta
-	case "medium":
-		counts.ExploitableMedium += delta
-	case "low":
-		counts.ExploitableLow += delta
-	}
-}
-
 // adjustFixableSeverity increments the fixable count for the given severity level.
 func adjustFixableSeverity(counts *OpenCounts, severity string) {
 	switch severity {
@@ -397,9 +382,6 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 						counts.ExploitableIgnoredUnfixable++
 					}
 				}
-				if exploitable {
-					adjustExploitableSeverity(&counts, key.severity, 1)
-				}
 				continue
 			}
 			if _, ok := seenOpen[key]; ok {
@@ -419,9 +401,6 @@ func (c *Client) CountOpenIssues(ctx context.Context, filter IssueFilter) (OpenC
 					if rec.exploitable {
 						counts.ExploitableIgnoredUnfixable--
 					}
-				}
-				if rec.exploitable {
-					adjustExploitableSeverity(&counts, rec.severity, -1)
 				}
 			}
 			seenOpen[key] = struct{}{}

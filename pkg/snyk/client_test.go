@@ -341,9 +341,9 @@ func TestCountOpenIssues_NoDoubleCounting_IgnoredAndNonIgnored(t *testing.T) {
 }
 
 func TestCountOpenIssues_ExploitableConsistency(t *testing.T) {
-	// Verifies that exploitable counts are consistent across both dimensions:
-	//   severity sum  == fixability sum  == ExploitableTotal
-	// Uses a mix of ignored and non-ignored, fixable and unfixable, across severities.
+	// Verifies that per-severity exploitable counts only cover non-ignored issues,
+	// consistent with how Critical/High/Medium/Low themselves exclude ignored issues.
+	// Ignored exploitable issues are tracked only in ExploitableIgnored* fields.
 	exploitCoord := []coordinate{{IsUpgradeable: true}}
 	mock := &mockHTTPDoer{
 		responses: []*http.Response{
@@ -369,15 +369,10 @@ func TestCountOpenIssues_ExploitableConsistency(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	// Per-severity sum covers only non-ignored (a1 critical, a2 high).
 	severitySum := counts.ExploitableCritical + counts.ExploitableHigh + counts.ExploitableMedium + counts.ExploitableLow
-	fixabilitySum := counts.ExploitableFixable + counts.ExploitableUnfixable + counts.ExploitableIgnoredFixable + counts.ExploitableIgnoredUnfixable
-
-	if severitySum != fixabilitySum {
-		t.Errorf("exploitable severity sum (%d) != fixability sum (%d)", severitySum, fixabilitySum)
-	}
-	// 3 exploitable issues total (a1 critical, a2 high, a3 medium/ignored)
-	if severitySum != 3 {
-		t.Errorf("want 3 total exploitable, got %d", severitySum)
+	if severitySum != 2 {
+		t.Errorf("want 2 non-ignored exploitable (severity sum), got %d", severitySum)
 	}
 	if counts.ExploitableCritical != 1 {
 		t.Errorf("ExploitableCritical: want 1, got %d", counts.ExploitableCritical)
@@ -385,8 +380,8 @@ func TestCountOpenIssues_ExploitableConsistency(t *testing.T) {
 	if counts.ExploitableHigh != 1 {
 		t.Errorf("ExploitableHigh: want 1, got %d", counts.ExploitableHigh)
 	}
-	if counts.ExploitableMedium != 1 {
-		t.Errorf("ExploitableMedium: want 1 (ignored), got %d", counts.ExploitableMedium)
+	if counts.ExploitableMedium != 0 {
+		t.Errorf("ExploitableMedium: want 0 (ignored issues excluded), got %d", counts.ExploitableMedium)
 	}
 	if counts.ExploitableIgnoredFixable != 1 {
 		t.Errorf("ExploitableIgnoredFixable: want 1, got %d", counts.ExploitableIgnoredFixable)
