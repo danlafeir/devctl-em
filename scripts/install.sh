@@ -31,6 +31,8 @@ if [ -z "$FILENAME" ]; then
 fi
 URL="https://raw.githubusercontent.com/$REPO/main/bin/$FILENAME"
 
+mkdir -p "$INSTALL_DIR"
+
 TMP=$(mktemp)
 echo "Downloading $URL ..."
 curl -sSLfL "$URL" -o "$TMP"
