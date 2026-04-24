@@ -158,7 +158,23 @@ func runGhTeamConfig(ctx context.Context, reader *bufio.Reader, client *github.C
 	if len(currentWorkflows) > 0 {
 		return runGhTeamConfigUpdate(ctx, reader, client, org, slug, teamName, currentWorkflows)
 	}
-	return runGhTeamConfigFirstTime(ctx, reader, client, org, slug, teamName)
+
+	fmt.Println("\nHow would you like to configure repositories?")
+	fmt.Println("  i) Iterate through all non-archived repos")
+	fmt.Println("  s) Choose specific repos")
+	fmt.Print("Choice [i]: ")
+	input, _ := reader.ReadString('\n')
+	input = strings.ToLower(strings.TrimSpace(input))
+	if input == "" {
+		input = "i"
+	}
+
+	switch input {
+	case "s":
+		return runGhTeamConfigUpdate(ctx, reader, client, org, slug, teamName, map[string][]string{})
+	default:
+		return runGhTeamConfigFirstTime(ctx, reader, client, org, slug, teamName)
+	}
 }
 
 // runGhTeamConfigUpdate is shown when repos are already configured. It lets the
@@ -173,7 +189,9 @@ func runGhTeamConfigUpdate(ctx context.Context, reader *bufio.Reader, client *gi
 		}
 		fmt.Println()
 
-		fmt.Println("  c) Change a configured repo")
+		if len(configuredRepos) > 0 {
+			fmt.Println("  c) Change a configured repo")
+		}
 		fmt.Println("  a) Add a repo")
 		fmt.Println("  d) Done — keep as-is")
 		fmt.Print("Choice [d]: ")
@@ -186,6 +204,10 @@ func runGhTeamConfigUpdate(ctx context.Context, reader *bufio.Reader, client *gi
 
 		switch input {
 		case "c":
+			if len(configuredRepos) == 0 {
+				fmt.Println("No repos configured yet.")
+				continue
+			}
 			if err := promptChangeRepo(ctx, reader, client, org, teamName, configuredRepos, currentWorkflows); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 			}
