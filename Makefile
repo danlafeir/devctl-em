@@ -16,11 +16,12 @@ LDFLAGS    := -X 'main.BuildVersion=$(VERSION)' \
               -X 'main.BuildDate=$(BUILD_DATE)' \
               -X 'main.BuildLatestHash=$(GIT_HASH)'
 
-.PHONY: all build build-all install clean test run
+.PHONY: all build build-all install clean test run deploy
 
 # Usage:
 #   make build           # builds for your current system, output: bin/em (+ bin/em-<os>-<arch>-<hash>)
 #   make build-all       # builds for all supported systems
+#   make deploy          # interactive release: bump version, collect notes, build, commit, push
 #   GOOS=linux GOARCH=amd64 make build  # cross-compiles for linux/amd64
 
 all: build
@@ -53,3 +54,6 @@ test:
 
 run:
 	go run ./main.go $(ARGS)
+
+deploy:
+	@bash scripts/deploy.sh
