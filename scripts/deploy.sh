@@ -17,7 +17,7 @@ confirm() {
     local prompt="${1:-Continue?} [y/N] "
     local ans
     read -r -p "$prompt" ans
-    [[ "${ans,,}" == "y" ]]
+    [[ "$(echo "$ans" | tr '[:upper:]' '[:lower:]')" == "y" ]]
 }
 
 # ── require clean working tree ────────────────────────────────────────────────
