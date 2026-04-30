@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,10 +18,19 @@ import (
 
 // Client is the main JIRA Cloud API client.
 type Client struct {
-	httpClient  httputil.HTTPDoer
-	credentials Credentials
-	rateLimiter *httputil.RateLimiter
+	httpClient    httputil.HTTPDoer
+	credentials   Credentials
+	rateLimiter   *httputil.RateLimiter
+	debug         bool
+	dumpResponses bool
 }
+
+// WithDebug toggles per-request debug logging (method, URL, status, duration).
+func (c *Client) WithDebug(v bool) *Client { c.debug = v; return c }
+
+// WithDumpResponses toggles full response-body dumping. Off by default; only
+// enable on commands that explicitly opt in via --debug-upstream-response.
+func (c *Client) WithDumpResponses(v bool) *Client { c.dumpResponses = v; return c }
 
 // NewClient creates a new JIRA Cloud API client.
 func NewClient(creds Credentials) *Client {
@@ -62,6 +72,7 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
 
+		start := time.Now()
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
@@ -73,8 +84,18 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 			return nil, fmt.Errorf("reading response: %w", err)
 		}
 
+		if c.debug {
+			fmt.Fprintf(os.Stderr, "[debug] JIRA %s %s -> %d (%dms, %d bytes)\n",
+				method, fullURL, resp.StatusCode, time.Since(start).Milliseconds(), len(body))
+		}
+		if c.dumpResponses {
+			fmt.Fprintf(os.Stderr, "[debug-upstream-response] JIRA %s %s\n%s\n",
+				method, fullURL, string(body))
+		}
+
 		// Handle rate limiting (429)
 		if resp.StatusCode == 429 {
+			lastErr = httputil.Classify(httputil.ProviderJIRA, resp.StatusCode, body)
 			delay := c.rateLimiter.Backoff(attempt, resp.Header.Get("Retry-After"))
 			select {
 			case <-ctx.Done():
@@ -86,15 +107,16 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 
 		// Handle errors
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			excerpt := body
 			var errResp ErrorResponse
 			if json.Unmarshal(body, &errResp) == nil && (len(errResp.ErrorMessages) > 0 || len(errResp.Errors) > 0) {
 				msgs := errResp.ErrorMessages
 				for k, v := range errResp.Errors {
 					msgs = append(msgs, fmt.Sprintf("%s: %s", k, v))
 				}
-				return nil, fmt.Errorf("JIRA API error %d: %s", resp.StatusCode, strings.Join(msgs, "; "))
+				excerpt = []byte(strings.Join(msgs, "; "))
 			}
-			return nil, fmt.Errorf("JIRA API error %d: %s", resp.StatusCode, string(body))
+			return nil, httputil.Classify(httputil.ProviderJIRA, resp.StatusCode, excerpt)
 		}
 
 		return body, nil
@@ -399,4 +421,18 @@ func (c *Client) GetFilter(ctx context.Context, filterID string) (*Filter, error
 func (c *Client) TestConnection(ctx context.Context) error {
 	_, err := c.httpAdapter(ctx, "GET", "/rest/api/3/myself", nil)
 	return err
+}
+
+// WhoAmI returns the authenticated JIRA user. Useful for printing a
+// "Connected as ..." line after credentials are saved.
+func (c *Client) WhoAmI(ctx context.Context) (*User, error) {
+	body, err := c.httpAdapter(ctx, "GET", "/rest/api/3/myself", nil)
+	if err != nil {
+		return nil, err
+	}
+	var u User
+	if err := json.Unmarshal(body, &u); err != nil {
+		return nil, fmt.Errorf("parsing /myself response: %w", err)
+	}
+	return &u, nil
 }

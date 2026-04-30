@@ -1,0 +1,65 @@
+name: Build on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    # macOS runner — needed because the darwin builds use CGO_ENABLED=1.
+    # Cross-compiling darwin-with-CGO from linux is painful; macOS can build
+    # the (CGO-free) linux binaries fine.
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main (so we can push the binaries back)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          # Use a token that can push back to a protected branch if needed.
+          # GITHUB_TOKEN works for unprotected branches.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify the tag is on main
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          # The runner is checked out at main; verify the tag commit is in
+          # main's history. Fail otherwise — we don't want to publish binaries
+          # for an untracked branch.
+          git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          if ! git merge-base --is-ancestor "${TAG}" main; then
+            echo "Tag ${TAG} is not an ancestor of main; refusing to build."
+            exit 1
+          fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: make test
+
+      - name: Build all platforms
+        run: make build-all
+
+      - name: Verify version was injected
+        run: |
+          ./bin/em --version
+          ./bin/em --version | grep -q "${GITHUB_REF#refs/tags/}" \
+            || (echo "binary --version does not report the tag"; exit 1)
+
+      - name: Commit and push binaries
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bin/
+          if git diff --cached --quiet; then
+            echo "No binary changes to commit."
+            exit 0
+          fi
+          git commit -m "Build binaries for ${GITHUB_REF#refs/tags/}"
+          git push origin main

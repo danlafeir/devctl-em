@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	gh "github.com/danlafeir/em/internal/github"
 	"github.com/danlafeir/em/pkg/metrics"
 )
@@ -27,6 +28,7 @@ Required:
 
 func init() {
 	GithubCmd.AddCommand(deploymentFrequencyCmd)
+	registerUpstreamResponseFlag(deploymentFrequencyCmd)
 }
 
 type repoDeploymentResult struct {
@@ -69,9 +71,10 @@ func runDeploymentFrequency(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client.WithDumpResponses(dumpResponsesFlag(cmd))
 	fmt.Println("Testing GitHub connection...")
 	if err := client.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to GitHub: %w", err)
+		return surfaceUpstreamError("failed to connect to GitHub", err)
 	}
 
 	org := getGithubOrg()
@@ -93,7 +96,10 @@ func runDeploymentFrequency(cmd *cobra.Command, args []string) error {
 	totalRepos := 0
 	for _, tw := range allTeamWorkflows {
 		totalRepos += len(tw.Workflows)
+		debug.Printf("deployment-frequency: team=%q repos=%d", tw.Team, len(tw.Workflows))
 	}
+	debug.Printf("deployment-frequency: org=%q total repos=%d teams=%d window=%.1f weeks",
+		org, totalRepos, len(allTeamWorkflows), weeks)
 
 	multiTeam := len(allTeamWorkflows) > 1
 

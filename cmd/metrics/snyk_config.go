@@ -84,9 +84,9 @@ func runSnykConfig(cmd *cobra.Command, args []string) error {
 	authClient := snyk.NewAuthClient(token, siteInput)
 	fmt.Println("Testing Snyk connection...")
 	if err := authClient.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to Snyk: %w", err)
+		return surfaceUpstreamError("failed to connect to Snyk", err)
 	}
-	fmt.Println("Connected successfully.")
+	fmt.Printf("Connected to %s.\n", siteInput)
 
 	// 4. Org selection
 	orgID, orgName, err := resolveSnykOrg(ctx, reader, authClient)
@@ -138,7 +138,7 @@ func resolveSnykOrg(ctx context.Context, reader *bufio.Reader, client *snyk.Clie
 		return strings.TrimSpace(input), "", nil
 	}
 
-	fmt.Println("Snyk organizations:")
+	fmt.Printf("Token has access to %d Snyk orgs:\n", len(orgs))
 	for i, o := range orgs {
 		fmt.Printf("  %d) %s (%s)\n", i+1, o.Name, o.ID)
 	}

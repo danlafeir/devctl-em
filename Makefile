@@ -6,7 +6,17 @@ GOFILES=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
 GOOS?=$(shell go env GOOS)
 GOARCH?=$(shell go env GOARCH)
 
-.PHONY: all build build-all install clean test run deploy
+# Version metadata baked into the binary via -ldflags. VERSION uses git tags
+# when available so `em --version` reports something humans can reason about.
+VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+GIT_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS    := -X 'main.BuildVersion=$(VERSION)' \
+              -X 'main.BuildGitHash=$(GIT_HASH)' \
+              -X 'main.BuildDate=$(BUILD_DATE)' \
+              -X 'main.BuildLatestHash=$(GIT_HASH)'
+
+.PHONY: all build build-all install clean test run
 
 # Usage:
 #   make build           # builds for your current system, output: bin/em (+ bin/em-<os>-<arch>-<hash>)
@@ -16,21 +26,19 @@ GOARCH?=$(shell go env GOARCH)
 all: build
 
 build:
-	@echo "Building $(APP_NAME) for $(GOOS)/$(GOARCH)..."
+	@echo "Building $(APP_NAME) $(VERSION) for $(GOOS)/$(GOARCH)..."
 	@mkdir -p $(BUILD_DIR)
-	GIT_HASH=$$(git rev-parse --short HEAD); \
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME) ./main.go; \
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) ./main.go
 
 build-all:
-	@echo "Building $(APP_NAME) for all supported OS/ARCH combinations..."
+	@echo "Building $(APP_NAME) $(VERSION) for all supported OS/ARCH combinations..."
 	@rm -rf $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)
-	GIT_HASH=$$(git rev-parse --short HEAD); \
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME) ./main.go; \
-	GOOS=linux GOARCH=amd64 go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64-$$GIT_HASH ./main.go; \
-	GOOS=linux GOARCH=arm64 go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME)-linux-arm64-$$GIT_HASH ./main.go; \
-	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME)-darwin-amd64-$$GIT_HASH ./main.go; \
-	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags "-X 'main.BuildGitHash=$$GIT_HASH' -X 'main.BuildLatestHash=$$GIT_HASH'" -o $(BUILD_DIR)/$(APP_NAME)-darwin-arm64-$$GIT_HASH ./main.go
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) ./main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64-$(GIT_HASH) ./main.go
+	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-linux-arm64-$(GIT_HASH) ./main.go
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-darwin-amd64-$(GIT_HASH) ./main.go
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-darwin-arm64-$(GIT_HASH) ./main.go
 
 install: build
 	@mkdir -p ~/.local/bin
@@ -45,8 +53,3 @@ test:
 
 run:
 	go run ./main.go $(ARGS)
-
-deploy: test build-all
-	git add bin/
-	git commit -m "Pushing new em build"
-	git push

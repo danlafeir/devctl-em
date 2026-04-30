@@ -22,6 +22,7 @@ Required:
 
 func init() {
 	SnykCmd.AddCommand(snykReportCmd)
+	registerUpstreamResponseFlag(snykReportCmd)
 }
 
 func runSnykReport(cmd *cobra.Command, args []string) error {
@@ -45,9 +46,10 @@ func runSnykReport(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		client.WithDumpResponses(dumpResponsesFlag(cmd))
 		fmt.Println("Testing Snyk connection...")
 		if err := client.TestConnection(ctx); err != nil {
-			return fmt.Errorf("failed to connect to Snyk: %w", err)
+			return surfaceUpstreamError("failed to connect to Snyk", err)
 		}
 
 		filter := snykpkg.IssueFilter{ScanItemType: getConfigString("snyk.scan_item_type")}

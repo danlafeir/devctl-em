@@ -76,10 +76,15 @@ func runGhConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Println("Testing GitHub connection...")
-	if err := client.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to GitHub: %w", err)
+	user, err := client.WhoAmI(ctx)
+	if err != nil {
+		return surfaceUpstreamError("failed to connect to GitHub", err)
 	}
-	fmt.Println("Connected successfully.")
+	if user.Name != "" {
+		fmt.Printf("Connected to GitHub as %s (%s)\n", user.Login, user.Name)
+	} else {
+		fmt.Printf("Connected to GitHub as %s\n", user.Login)
+	}
 
 	// 4. Configure selected team
 	team := getSelectedTeam()
@@ -314,7 +319,7 @@ func runGhTeamConfigFirstTime(ctx context.Context, reader *bufio.Reader, client 
 		}
 		ok, err := configureRepoWorkflow(ctx, reader, client, org, teamName, repo.Name, currentWorkflows)
 		if err != nil {
-			if strings.Contains(err.Error(), "404") {
+			if isHTTPStatus(err, 404) {
 				notAccessible++
 			}
 			continue
@@ -343,9 +348,9 @@ func configureRepoWorkflow(ctx context.Context, reader *bufio.Reader, client *gi
 	owner := org
 	workflows, err := client.ListWorkflows(ctx, owner, repoName)
 	if err != nil {
-		if strings.Contains(err.Error(), "404") {
+		if isHTTPStatus(err, 404) {
 			fmt.Printf("  %s: Actions not accessible, skipping.\n\n", repoName)
-			return false, fmt.Errorf("404: %w", err)
+			return false, err
 		}
 		fmt.Printf("  %s: Error listing workflows: %v\n\n", repoName, err)
 		return false, err

@@ -8,6 +8,7 @@ import (
 	"github.com/danlafeir/cli-go/pkg/secrets"
 	"github.com/spf13/cobra"
 
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/internal/output"
 	"github.com/danlafeir/em/pkg/snyk"
 )
@@ -69,7 +70,7 @@ func getSnykClient() (*snyk.Client, error) {
 		Site:  site,
 	}
 
-	return snyk.NewClient(creds), nil
+	return snyk.NewClient(creds).WithDebug(debug.Enabled()), nil
 }
 
 // getSnykDateRange returns the from/to date range for Snyk commands.

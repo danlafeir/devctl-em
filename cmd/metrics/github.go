@@ -8,6 +8,7 @@ import (
 	"github.com/danlafeir/cli-go/pkg/secrets"
 	"github.com/spf13/cobra"
 
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/internal/github"
 	"github.com/danlafeir/em/internal/output"
 )
@@ -54,7 +55,11 @@ func getGithubClient() (*github.Client, error) {
 		Org:   getGithubOrg(),
 	}
 
-	return github.NewClient(creds)
+	client, err := github.NewClient(creds)
+	if err != nil {
+		return nil, err
+	}
+	return client.WithDebug(debug.Enabled()), nil
 }
 
 // getGithubOrg returns the GitHub org from config.

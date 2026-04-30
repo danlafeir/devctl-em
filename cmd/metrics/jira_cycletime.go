@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/pkg/jira"
 	"github.com/danlafeir/em/pkg/metrics"
 	"github.com/danlafeir/em/pkg/workflow"
@@ -32,6 +33,7 @@ func init() {
 
 	// Cycle-time specific flags
 	cycleTimeCmd.Flags().IntSlice("percentiles", []int{50, 70, 85, 95}, "Percentiles to calculate")
+	registerUpstreamResponseFlag(cycleTimeCmd)
 }
 
 func runCycleTime(cmd *cobra.Command, args []string) error {
@@ -48,8 +50,9 @@ func runCycleTime(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		client.WithDumpResponses(dumpResponsesFlag(cmd))
 		if err := client.TestConnection(ctx); err != nil {
-			return fmt.Errorf("failed to connect to JIRA: %w", err)
+			return surfaceUpstreamError("failed to connect to JIRA", err)
 		}
 	}
 
@@ -76,12 +79,13 @@ func generateCycleTime(ctx context.Context, client *jira.Client, team, jql strin
 	} else {
 		// Add date filter to JQL, excluding Epics
 		jqlWithDates := jqlWithDateRange(
-			fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect)", jql),
+			fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect, Task)", jql),
 			from.Format("2006-01-02"), to.Format("2006-01-02"),
 		)
 
 		fmt.Printf("Fetching issues from JIRA...\n")
 		fmt.Printf("JQL: %s\n", jqlWithDates)
+		debug.Printf("cycle-time: team=%q resolved JQL: %s", team, jqlWithDates)
 
 		histories, mapper, err := fetchAndMapIssues(ctx, client, jqlWithDates)
 		if err != nil {
@@ -96,7 +100,10 @@ func generateCycleTime(ctx context.Context, client *jira.Client, team, jql strin
 		fmt.Printf("Found %d issues\n\n", len(histories))
 
 		var outlierKeys map[string]bool
-		results, _, outlierKeys = computeCycleTimeFromHistories(histories, mapper)
+		var kept []metrics.CycleTimeResult
+		results, kept, outlierKeys = computeCycleTimeFromHistories(histories, mapper)
+		debug.Printf("cycle-time: team=%q raw=%d kept=%d outliers=%d",
+			team, len(results), len(kept), len(outlierKeys))
 		if saveRawDataFlag {
 			if err := saveJiraCycleTimeData(results, outlierKeys, team); err == nil {
 				fmt.Printf("Raw data saved to: %s\n", savedJiraCycleTimePath(team))

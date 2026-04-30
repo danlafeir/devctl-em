@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/pkg/jira"
 	"github.com/danlafeir/em/pkg/metrics"
 	"github.com/danlafeir/em/pkg/workflow"
@@ -32,6 +33,7 @@ func init() {
 
 	// Throughput-specific flags
 	throughputCmd.Flags().StringVar(&frequencyFlag, "frequency", "weekly", "Aggregation frequency: daily, weekly, biweekly, monthly")
+	registerUpstreamResponseFlag(throughputCmd)
 }
 
 func runThroughput(cmd *cobra.Command, args []string) error {
@@ -45,9 +47,10 @@ func runThroughput(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client.WithDumpResponses(dumpResponsesFlag(cmd))
 
 	if err := client.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to JIRA: %w", err)
+		return surfaceUpstreamError("failed to connect to JIRA", err)
 	}
 
 	from, to, err := getDateRange()
@@ -65,6 +68,7 @@ func generateThroughput(ctx context.Context, client *jira.Client, team, jql stri
 
 	fmt.Printf("Fetching issues from JIRA...\n")
 	fmt.Printf("JQL: %s\n", jqlWithDates)
+	debug.Printf("throughput: team=%q resolved JQL: %s", team, jqlWithDates)
 
 	histories, mapper, err := fetchAndMapIssues(ctx, client, jqlWithDates)
 	if err != nil {
@@ -77,9 +81,11 @@ func generateThroughput(ctx context.Context, client *jira.Client, team, jql stri
 	}
 
 	fmt.Printf("Found %d issues\n\n", len(histories))
+	debug.Printf("throughput: team=%q raw issues=%d", team, len(histories))
 
 	frequency := parseThroughputFrequency(frequencyFlag)
 	result := computeThroughputFromHistories(histories, mapper, frequency, from, to)
+	debug.Printf("throughput: team=%q frequency=%s buckets=%d", team, frequencyFlag, len(result.Periods))
 
 	if saveRawDataFlag {
 		if err := saveJiraThroughputData(result, team); err == nil {

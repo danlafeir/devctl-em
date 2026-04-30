@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	ghapi "github.com/cli/go-gh/v2/pkg/api"
+
+	"github.com/danlafeir/em/pkg/httputil"
 )
 
 // newTestClient creates a Client backed by a TLS mock httptest.Server.
@@ -216,5 +219,51 @@ func TestListTeamRepos(t *testing.T) {
 	}
 	if result[0].Name != "api" {
 		t.Errorf("expected first repo 'api', got %q", result[0].Name)
+	}
+}
+
+// -- HTTP error classification -----------------------------------------------
+
+func TestHTTPErrors_ReturnTypedAPIError(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		mustContain string
+	}{
+		{"401 invalid token", 401, `{"message":"Bad credentials"}`, "em metrics github config"},
+		{"403 missing scope", 403, `{"message":"Resource not accessible by personal access token"}`, "`repo` scope"},
+		{"404 unknown repo", 404, `{"message":"Not Found"}`, "org, team slug"},
+		{"500 server error", 500, `{"message":"Server Error"}`, "transient"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			})
+			client, ts := newTestClient(t, h)
+			defer ts.Close()
+
+			_, err := client.ListWorkflows(context.Background(), "myorg", "myrepo")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			var apiErr *httputil.APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *httputil.APIError, got %T: %v", err, err)
+			}
+			if apiErr.Provider != httputil.ProviderGitHub {
+				t.Errorf("Provider = %q, want GitHub", apiErr.Provider)
+			}
+			if apiErr.StatusCode != tc.status {
+				t.Errorf("StatusCode = %d, want %d", apiErr.StatusCode, tc.status)
+			}
+			if !strings.Contains(err.Error(), tc.mustContain) {
+				t.Errorf("error message %q does not contain %q", err.Error(), tc.mustContain)
+			}
+		})
 	}
 }

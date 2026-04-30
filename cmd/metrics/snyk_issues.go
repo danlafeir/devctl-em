@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/pkg/snyk"
 )
 
@@ -25,6 +26,7 @@ Required:
 
 func init() {
 	SnykCmd.AddCommand(snykIssuesCmd)
+	registerUpstreamResponseFlag(snykIssuesCmd)
 }
 
 func runSnykIssues(cmd *cobra.Command, args []string) error {
@@ -41,9 +43,10 @@ func runSnykIssues(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		client.WithDumpResponses(dumpResponsesFlag(cmd))
 		fmt.Println("Testing Snyk connection...")
 		if err := client.TestConnection(ctx); err != nil {
-			return fmt.Errorf("failed to connect to Snyk: %w", err)
+			return surfaceUpstreamError("failed to connect to Snyk", err)
 		}
 		fmt.Printf("Fetching issues (%s to %s)...\n",
 			from.Format("2006-01-02"), to.Format("2006-01-02"))
@@ -63,6 +66,9 @@ func runSnykIssues(cmd *cobra.Command, args []string) error {
 	counts := countBySeverity(issues)
 	exploitable := countExploitableBySeverity(issues)
 	total := counts["critical"] + counts["high"] + counts["medium"] + counts["low"]
+	debug.Printf("snyk-issues: org=%q open issues=%d resolved=%d critical=%d high=%d medium=%d low=%d",
+		getConfigString("snyk.org_id"), len(issues), len(resolved),
+		counts["critical"], counts["high"], counts["medium"], counts["low"])
 
 	fmt.Printf("\nVulnerability Summary (%d total)\n", total)
 	fmt.Printf("================================\n\n")

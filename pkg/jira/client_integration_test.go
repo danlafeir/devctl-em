@@ -2,9 +2,14 @@ package jira_test
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/danlafeir/em/internal/testutil/mockjira"
+	"github.com/danlafeir/em/pkg/httputil"
 	"github.com/danlafeir/em/pkg/jira"
 )
 
@@ -149,5 +154,53 @@ func TestChangelogPagination(t *testing.T) {
 	// PROJ-8 has 7 status transitions
 	if len(proj8.Transitions) != 7 {
 		t.Errorf("PROJ-8: expected 7 transitions, got %d", len(proj8.Transitions))
+	}
+}
+
+func TestHTTPErrors_ReturnTypedAPIError(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		mustContain string
+	}{
+		{"401 invalid token", 401, `{"errorMessages":["Login required"]}`, "em metrics jira config"},
+		{"403 no project access", 403, `{"errorMessages":["You do not have permission"]}`, "lacks read access"},
+		{"404 unknown project", 404, `{"errorMessages":["Issue does not exist"]}`, "project key"},
+		{"503 server error", 503, "<html>upstream busted</html>", "transient"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer ts.Close()
+
+			client := jira.NewClient(jira.Credentials{
+				BaseURLOverride: ts.URL,
+				Email:           "test@test.com",
+				APIToken:        "fake",
+			})
+
+			err := client.TestConnection(context.Background())
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			var apiErr *httputil.APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *httputil.APIError, got %T: %v", err, err)
+			}
+			if apiErr.Provider != httputil.ProviderJIRA {
+				t.Errorf("Provider = %q, want JIRA", apiErr.Provider)
+			}
+			if apiErr.StatusCode != tc.status {
+				t.Errorf("StatusCode = %d, want %d", apiErr.StatusCode, tc.status)
+			}
+			if !strings.Contains(err.Error(), tc.mustContain) {
+				t.Errorf("error message %q does not contain %q", err.Error(), tc.mustContain)
+			}
+		})
 	}
 }

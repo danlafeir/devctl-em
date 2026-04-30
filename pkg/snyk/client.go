@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -17,10 +18,18 @@ const apiVersion = "2025-11-05"
 
 // Client is the main Snyk API client.
 type Client struct {
-	httpClient  httputil.HTTPDoer
-	credentials Credentials
-	rateLimiter *httputil.RateLimiter
+	httpClient    httputil.HTTPDoer
+	credentials   Credentials
+	rateLimiter   *httputil.RateLimiter
+	debug         bool
+	dumpResponses bool
 }
+
+// WithDebug toggles per-request debug logging.
+func (c *Client) WithDebug(v bool) *Client { c.debug = v; return c }
+
+// WithDumpResponses toggles full response-body dumping. Off by default.
+func (c *Client) WithDumpResponses(v bool) *Client { c.dumpResponses = v; return c }
 
 // NewAuthClient creates a Snyk client with only token and site — no OrgID required.
 // Use for operations that don't need an org (e.g. ListOrgs during config).
@@ -71,6 +80,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 		req.Header.Set("Authorization", "token "+c.credentials.Token)
 		req.Header.Set("Content-Type", "application/vnd.api+json")
 
+		start := time.Now()
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
@@ -82,8 +92,17 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 			return nil, fmt.Errorf("reading response: %w", err)
 		}
 
+		if c.debug {
+			fmt.Fprintf(os.Stderr, "[debug] Snyk %s %s -> %d (%dms, %d bytes)\n",
+				method, reqURL, resp.StatusCode, time.Since(start).Milliseconds(), len(body))
+		}
+		if c.dumpResponses {
+			fmt.Fprintf(os.Stderr, "[debug-upstream-response] Snyk %s %s\n%s\n",
+				method, reqURL, string(body))
+		}
+
 		if resp.StatusCode == 429 {
-			lastErr = fmt.Errorf("rate limited (HTTP 429)")
+			lastErr = httputil.Classify(httputil.ProviderSnyk, resp.StatusCode, body)
 			delay := c.rateLimiter.Backoff(attempt, resp.Header.Get("Retry-After"))
 			select {
 			case <-ctx.Done():
@@ -94,7 +113,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("Snyk API error %d: %s", resp.StatusCode, string(body))
+			return nil, httputil.Classify(httputil.ProviderSnyk, resp.StatusCode, body)
 		}
 
 		return body, nil

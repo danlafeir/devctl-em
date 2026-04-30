@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/pkg/jira"
 	"github.com/danlafeir/em/pkg/metrics"
 	"github.com/danlafeir/em/pkg/workflow"
@@ -47,6 +48,7 @@ func init() {
 	forecastCmd.Flags().IntVar(&trialsFlag, "trials", 10000, "Number of Monte Carlo simulations")
 	forecastCmd.Flags().IntVar(&historyDaysFlag, "history-days", 120, "Days of historical throughput to sample from")
 	forecastCmd.Flags().BoolVar(&allEpicsFlag, "all", false, "Forecast all open epics (default when no other flags)")
+	registerUpstreamResponseFlag(forecastCmd)
 }
 
 // EpicForecast holds forecast results for a single epic.
@@ -75,9 +77,10 @@ func runForecast(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client.WithDumpResponses(dumpResponsesFlag(cmd))
 
 	if err := client.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to JIRA: %w", err)
+		return surfaceUpstreamError("failed to connect to JIRA", err)
 	}
 
 	return withTeamIteration(func(team, jql string) error {
@@ -585,6 +588,9 @@ func forecastEpic(ctx context.Context, client *jira.Client, mapper *workflow.Map
 			forecast.RemainingItems++
 		}
 	}
+	debug.Printf("forecast: epic=%s total=%d remaining=%d completed=%d throughput-samples=%d trials=%d",
+		epic.Key, forecast.TotalItems, forecast.RemainingItems, forecast.CompletedItems,
+		len(weeklyThroughput), trialsFlag)
 
 	if forecast.TotalItems > 0 {
 		forecast.Progress = float64(forecast.CompletedItems) / float64(forecast.TotalItems) * 100

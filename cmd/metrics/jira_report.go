@@ -25,6 +25,7 @@ Required:
 
 func init() {
 	JiraCmd.AddCommand(reportCmd)
+	registerUpstreamResponseFlag(reportCmd)
 }
 
 func runReport(cmd *cobra.Command, args []string) error {
@@ -38,10 +39,11 @@ func runReport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client.WithDumpResponses(dumpResponsesFlag(cmd))
 
 	fmt.Println("Testing JIRA connection...")
 	if err := client.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to JIRA: %w", err)
+		return surfaceUpstreamError("failed to connect to JIRA", err)
 	}
 
 	from, to, err := getDateRange()
@@ -83,7 +85,7 @@ func collectJIRAMetricsData(ctx context.Context, client *jira.Client, team, jql 
 	}
 
 	jqlCompleted := jqlWithDateRange(
-		fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect)", jql),
+		fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect, Task)", jql),
 		from.Format("2006-01-02"), to.Format("2006-01-02"),
 	)
 

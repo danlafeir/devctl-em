@@ -3,6 +3,7 @@ package snyk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -747,6 +748,59 @@ func TestDoRequest_UsesFullURLForPagination(t *testing.T) {
 	got := mock.requests[1].URL.String()
 	if got != fullURL {
 		t.Errorf("pagination request URL: want %q, got %q", fullURL, got)
+	}
+}
+
+// ---- HTTP error classification ----
+
+func newRawResponse(statusCode int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: statusCode,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     make(http.Header),
+	}
+}
+
+func TestDoRequest_ClassifiesUpstreamErrors(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		mustContain string
+	}{
+		{"401 invalid token", 401, `{"errors":[{"detail":"Unauthorized"}]}`, "em metrics snyk config"},
+		{"403 no org access", 403, `{"errors":[{"detail":"Forbidden"}]}`, "Snyk org"},
+		{"404 unknown org", 404, `{"errors":[{"detail":"Not Found"}]}`, "org ID"},
+		{"500 server error", 500, "boom", "transient"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockHTTPDoer{
+				responses: []*http.Response{newRawResponse(tc.status, tc.body)},
+			}
+			client := newClient(mock)
+
+			from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+			_, err := client.ListIssues(context.Background(), from, to, IssueFilter{})
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			var apiErr *httputil.APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *httputil.APIError, got %T: %v", err, err)
+			}
+			if apiErr.Provider != httputil.ProviderSnyk {
+				t.Errorf("Provider = %q, want Snyk", apiErr.Provider)
+			}
+			if apiErr.StatusCode != tc.status {
+				t.Errorf("StatusCode = %d, want %d", apiErr.StatusCode, tc.status)
+			}
+			if !strings.Contains(err.Error(), tc.mustContain) {
+				t.Errorf("error message %q does not contain %q", err.Error(), tc.mustContain)
+			}
+		})
 	}
 }
 

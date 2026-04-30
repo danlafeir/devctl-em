@@ -9,6 +9,13 @@ type Credentials struct {
 	Org   string // GitHub organization name
 }
 
+// User is the subset of GitHub's /user response we care about. Populated by
+// WhoAmI for the "Connected as ..." setup-confirmation line.
+type User struct {
+	Login string `json:"login"`
+	Name  string `json:"name,omitempty"`
+}
+
 // RepositoryOwner represents the owner of a GitHub repository.
 type RepositoryOwner struct {
 	Login string `json:"login"`

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/danlafeir/em/internal/charts"
+	"github.com/danlafeir/em/internal/debug"
 	"github.com/danlafeir/em/pkg/jira"
 	"github.com/danlafeir/em/internal/output"
 	"github.com/danlafeir/em/pkg/workflow"
@@ -139,7 +140,7 @@ func getJiraClient() (*jira.Client, error) {
 		creds.BaseURLOverride = override
 	}
 
-	return jira.NewClient(creds), nil
+	return jira.NewClient(creds).WithDebug(debug.Enabled()), nil
 }
 
 // emConfigSchema lists all valid config keys under the "em" namespace.

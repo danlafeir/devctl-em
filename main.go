@@ -13,11 +13,13 @@ import (
 	"github.com/danlafeir/cli-go/pkg/secrets"
 )
 
-// BuildGitHash is set at build time via -ldflags
-var BuildGitHash = "dev"
-
-// BuildLatestHash is set at build time via -ldflags to the latest available hash
-var BuildLatestHash = "dev"
+// Build metadata is set at build time via -ldflags. See Makefile.
+var (
+	BuildVersion    = "dev"
+	BuildGitHash    = "dev"
+	BuildDate       = "unknown"
+	BuildLatestHash = "dev"
+)
 
 func checkUpgrade() {
 	home, err := os.UserHomeDir()
@@ -40,7 +42,7 @@ func checkUpgrade() {
 	// Check remote for latest hash
 	remoteHash := BuildLatestHash
 	if remoteHash != "" && remoteHash != BuildGitHash {
-		fmt.Fprintf(os.Stderr, "A new version of em is available (hash: %s). Run 'em update' to upgrade.\n", remoteHash)
+		fmt.Fprintf(os.Stderr, "A new version of em is available (commit %s). Run 'em update' to upgrade.\n", remoteHash)
 	}
 
 	// Write today's check
@@ -54,7 +56,9 @@ func checkUpgrade() {
 func main() {
 	secrets.SetDefaultProvider("em")
 	checkUpgrade()
+	cmd.BuildVersion = BuildVersion
 	cmd.BuildGitHash = BuildGitHash
+	cmd.BuildDate = BuildDate
 	cmd.BuildLatestHash = BuildLatestHash
 	cmd.Execute()
 }

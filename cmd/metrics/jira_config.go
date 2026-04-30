@@ -72,6 +72,13 @@ func runJiraConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// 3a. Verify the credentials we just stored actually authenticate. Prints a
+	// "Connected as ..." line on success so the user knows things are wired up
+	// before we proceed to project/team config.
+	if err := verifyJiraConnection(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+	}
+
 	// 4. Configure selected team
 	team := getSelectedTeam()
 
@@ -286,5 +293,28 @@ func fetchAndStoreBoardJQL(ctx context.Context, client *jira.Client, team string
 	jql = stripBoardOnlyJQLClauses(jql)
 	config.SetConfigValue(configNamespace, key, jql)
 	fmt.Printf("Set %s = %s\n", key, jql)
+	return nil
+}
+
+// verifyJiraConnection authenticates against JIRA using the credentials just
+// captured in the config flow and prints a "Connected as ..." line. Returns
+// an error so the caller can surface it (typically as a warning rather than a
+// hard failure — the user might want to keep configuring even if the test
+// fails).
+func verifyJiraConnection() error {
+	client, err := getJiraClient()
+	if err != nil {
+		return err
+	}
+	user, err := client.WhoAmI(context.Background())
+	if err != nil {
+		return surfaceUpstreamError("could not verify JIRA connection", err)
+	}
+	domain := getConfigString("jira.domain")
+	if user.EmailAddress != "" {
+		fmt.Printf("Connected to %s.atlassian.net as %s <%s>\n", domain, user.DisplayName, user.EmailAddress)
+	} else {
+		fmt.Printf("Connected to %s.atlassian.net as %s\n", domain, user.DisplayName)
+	}
 	return nil
 }

@@ -3,21 +3,33 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	ghapi "github.com/cli/go-gh/v2/pkg/api"
+
+	"github.com/danlafeir/em/pkg/httputil"
 )
 
 // Client is the GitHub API client backed by go-gh.
 type Client struct {
-	rest *ghapi.RESTClient
+	rest          *ghapi.RESTClient
+	debug         bool
+	dumpResponses bool
 }
+
+// WithDebug toggles per-request debug logging.
+func (c *Client) WithDebug(v bool) *Client { c.debug = v; return c }
+
+// WithDumpResponses toggles full response-body dumping. Off by default.
+func (c *Client) WithDumpResponses(v bool) *Client { c.dumpResponses = v; return c }
 
 // NewClient creates a new GitHub API client using go-gh.
 func NewClient(creds Credentials) (*Client, error) {
@@ -64,9 +76,13 @@ func parseLinkHeader(header string) string {
 
 // doGet executes a GET request and returns the raw body and Link header value.
 func (c *Client) doGet(ctx context.Context, path string) ([]byte, string, error) {
+	start := time.Now()
 	resp, err := c.rest.RequestWithContext(ctx, "GET", path, nil)
 	if err != nil {
-		return nil, "", err
+		if c.debug {
+			fmt.Fprintf(os.Stderr, "[debug] GitHub GET %s -> error: %v\n", path, err)
+		}
+		return nil, "", classifyGHError(err)
 	}
 	defer resp.Body.Close()
 
@@ -75,7 +91,27 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, string, error)
 		return nil, "", fmt.Errorf("reading response: %w", err)
 	}
 
+	if c.debug {
+		fmt.Fprintf(os.Stderr, "[debug] GitHub GET %s -> %d (%dms, %d bytes)\n",
+			path, resp.StatusCode, time.Since(start).Milliseconds(), len(body))
+	}
+	if c.dumpResponses {
+		fmt.Fprintf(os.Stderr, "[debug-upstream-response] GitHub GET %s\n%s\n",
+			path, string(body))
+	}
+
 	return body, resp.Header.Get("Link"), nil
+}
+
+// classifyGHError converts go-gh's *api.HTTPError into a typed *httputil.APIError
+// so callers and the cmd layer can branch on status code without string matching.
+// Non-HTTP errors (network, JSON parse) pass through untouched.
+func classifyGHError(err error) error {
+	var httpErr *ghapi.HTTPError
+	if errors.As(err, &httpErr) {
+		return httputil.Classify(httputil.ProviderGitHub, httpErr.StatusCode, []byte(httpErr.Message))
+	}
+	return err
 }
 
 // doGetURL executes a GET against an absolute pagination URL by extracting the path.
@@ -233,6 +269,20 @@ func (c *Client) ListUserTeams(ctx context.Context, org string) ([]Team, error) 
 
 // TestConnection verifies the GitHub credentials work.
 func (c *Client) TestConnection(ctx context.Context) error {
-	_, _, err := c.doGet(ctx, "user")
+	_, err := c.WhoAmI(ctx)
 	return err
+}
+
+// WhoAmI returns the authenticated GitHub user. Useful for printing a
+// "Connected as ..." line after credentials are saved.
+func (c *Client) WhoAmI(ctx context.Context) (*User, error) {
+	body, _, err := c.doGet(ctx, "user")
+	if err != nil {
+		return nil, err
+	}
+	var u User
+	if err := json.Unmarshal(body, &u); err != nil {
+		return nil, fmt.Errorf("parsing /user response: %w", err)
+	}
+	return &u, nil
 }
