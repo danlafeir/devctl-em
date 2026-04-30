@@ -13,8 +13,7 @@ GIT_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS    := -X 'main.BuildVersion=$(VERSION)' \
               -X 'main.BuildGitHash=$(GIT_HASH)' \
-              -X 'main.BuildDate=$(BUILD_DATE)' \
-              -X 'main.BuildLatestHash=$(GIT_HASH)'
+              -X 'main.BuildDate=$(BUILD_DATE)'
 
 .PHONY: all build build-all install clean test run deploy
 

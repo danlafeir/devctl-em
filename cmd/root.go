@@ -9,31 +9,23 @@ import (
 
 	"github.com/danlafeir/em/cmd/metrics"
 	"github.com/danlafeir/em/internal/debug"
-	"github.com/danlafeir/cli-go/pkg/update"
+	"github.com/danlafeir/em/internal/selfupdate"
 	"github.com/spf13/cobra"
 )
 
 // Build metadata, populated by main.go from -ldflags-injected values.
 var (
-	BuildVersion    string
-	BuildGitHash    string
-	BuildDate       string
-	BuildLatestHash string
+	BuildVersion string
+	BuildGitHash string
+	BuildDate    string
 )
 
-// updateConfig returns the update configuration for em
-var updateConfig = update.Config{
-	AppName: "em",
-	Repo:    "danlafeir/em",
-	BinDir:  "bin",
-}
-
-// updateCmd represents the update command
+// updateCmd downloads and installs the latest GitHub Release of em.
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update em to the latest version",
 	Run: func(cmd *cobra.Command, args []string) {
-		update.RunUpdateWithConfig(updateConfig, BuildGitHash, cmd)
+		selfupdate.Run(BuildVersion, cmd)
 	},
 }
 

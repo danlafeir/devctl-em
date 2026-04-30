@@ -1,4 +1,4 @@
-name: Build on tag
+name: Release
 
 on:
   push:
@@ -6,33 +6,27 @@ on:
       - 'v*'
 
 jobs:
-  build:
-    # macOS runner — needed because the darwin builds use CGO_ENABLED=1.
-    # Cross-compiling darwin-with-CGO from linux is painful; macOS can build
-    # the (CGO-free) linux binaries fine.
+  release:
+    # macOS runner required: darwin builds use CGO_ENABLED=1.
+    # macOS can also cross-compile the pure-Go linux targets without issue.
     runs-on: macos-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout main (so we can push the binaries back)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Check out main so we can push the bridge binaries back.
           ref: main
-          # Use a token that can push back to a protected branch if needed.
-          # GITHUB_TOKEN works for unprotected branches.
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify the tag is on main
+      - name: Verify tag is on main
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          # The runner is checked out at main; verify the tag commit is in
-          # main's history. Fail otherwise — we don't want to publish binaries
-          # for an untracked branch.
           git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}"
           if ! git merge-base --is-ancestor "${TAG}" main; then
-            echo "Tag ${TAG} is not an ancestor of main; refusing to build."
+            echo "Tag ${TAG} is not an ancestor of main; refusing to release."
             exit 1
           fi
 
@@ -46,13 +40,46 @@ jobs:
       - name: Build all platforms
         run: make build-all
 
-      - name: Verify version was injected
+      - name: Verify version string
         run: |
-          ./bin/em --version
-          ./bin/em --version | grep -q "${GITHUB_REF#refs/tags/}" \
-            || (echo "binary --version does not report the tag"; exit 1)
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION=$(./bin/em --version)
+          echo "Binary reports: $VERSION"
+          echo "$VERSION" | grep -qF "$TAG" \
+            || (echo "Binary --version does not contain $TAG" && exit 1)
 
-      - name: Commit and push binaries
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          HASH=$(git rev-parse --short HEAD)
+
+          # Rename binaries to the clean platform names used as asset identifiers
+          # by install.sh and `em update`.
+          ASSETS_DIR=$(mktemp -d)
+          for platform in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64; do
+            cp "bin/em-${platform}-${HASH}" "${ASSETS_DIR}/em-${platform}"
+          done
+
+          # Extract release notes from the annotated tag message.
+          # deploy.sh stores them as: first line = title, rest = body.
+          TAG_SUBJECT=$(git tag -l --format='%(subject)' "$TAG")
+          TAG_BODY=$(git tag -l --format='%(body)' "$TAG")
+
+          gh release create "$TAG" \
+            --title "${TAG_SUBJECT:-$TAG}" \
+            --notes "${TAG_BODY:-Released $TAG}" \
+            "${ASSETS_DIR}/em-darwin-amd64" \
+            "${ASSETS_DIR}/em-darwin-arm64" \
+            "${ASSETS_DIR}/em-linux-amd64" \
+            "${ASSETS_DIR}/em-linux-arm64"
+
+      # BRIDGE: also commit hash-named binaries to bin/ so that users still
+      # running the old `em update` (which reads the git contents API) can
+      # receive this release and upgrade to the GitHub-Releases-based updater.
+      # Remove this step once you are confident all active users have updated.
+      - name: Commit bridge binaries to bin/
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -61,5 +88,5 @@ jobs:
             echo "No binary changes to commit."
             exit 0
           fi
-          git commit -m "Build binaries for ${GITHUB_REF#refs/tags/}"
+          git commit -m "Release ${GITHUB_REF#refs/tags/} binaries"
           git push origin main

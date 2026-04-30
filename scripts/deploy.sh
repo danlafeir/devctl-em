@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # deploy.sh — interactive release script for em
-# Creates a semver tag, collects release notes, builds all binaries,
-# updates RELEASES.md, and pushes everything to main.
+#
+# Flow:
+#   1. Prompt for semver bump type (major/minor/patch, default patch)
+#   2. Prompt for release title and change notes
+#   3. Update RELEASES.md
+#   4. Commit and create an annotated tag carrying the release notes
+#   5. Push main + tag → CI builds binaries and publishes the GitHub Release
+#
 set -euo pipefail
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -91,13 +97,10 @@ while IFS= read -r line; do
 done <<< "$CHANGE_BODY"
 echo "────────────────────────────────────────"
 echo ""
-confirm "Run tests, build, commit, and push?" || exit 0
-
-# ── tests ─────────────────────────────────────────────────────────────────────
-
+echo "This will commit RELEASES.md, create tag $NEW_TAG, and push."
+echo "CI will build binaries and publish the GitHub Release."
 echo ""
-echo "Running tests..."
-make test
+confirm "Proceed?" || exit 0
 
 # ── update RELEASES.md ────────────────────────────────────────────────────────
 
@@ -108,10 +111,16 @@ if [[ ! -f "$RELEASES_FILE" ]]; then
     cat > "$RELEASES_FILE" <<'HDR'
 # Releases
 
-Install or upgrade at any time:
+Install or upgrade:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danlafeir/em/main/scripts/install.sh | bash
+```
+
+Or upgrade an existing install:
+
+```
+em update
 ```
 
 ---
@@ -119,7 +128,7 @@ curl -fsSL https://raw.githubusercontent.com/danlafeir/em/main/scripts/install.s
 HDR
 fi
 
-# Prepend new entry after the header block (after the first ---)
+# Prepend the new entry below the first "---" separator
 ENTRY="## $NEW_TAG — $RELEASE_DATE
 
 **$RELEASE_TITLE**
@@ -130,7 +139,6 @@ $CHANGE_BODY
 
 "
 
-# Build updated file: header block + new entry + existing entries
 HEADER_END=$(grep -n "^---$" "$RELEASES_FILE" | head -1 | cut -d: -f1)
 if [[ -n "$HEADER_END" ]]; then
     HEAD_BLOCK=$(head -n "$HEADER_END" "$RELEASES_FILE")
@@ -142,28 +150,29 @@ fi
 
 echo "Updated $RELEASES_FILE"
 
-# ── tag ───────────────────────────────────────────────────────────────────────
+# ── commit ────────────────────────────────────────────────────────────────────
 
-git tag -a "$NEW_TAG" -m "$RELEASE_TITLE"
+git add "$RELEASES_FILE"
+git commit -m "Release $NEW_TAG: $RELEASE_TITLE"
+echo "Committed RELEASES.md"
+
+# ── tag ───────────────────────────────────────────────────────────────────────
+# Store the full release notes in the tag message so CI can use them as
+# the GitHub Release body without re-querying anything.
+
+TAG_MSG="$(printf '%s\n\n%s' "$RELEASE_TITLE" "$CHANGE_BODY")"
+git tag -a "$NEW_TAG" -m "$TAG_MSG"
 echo "Created tag $NEW_TAG"
 
-# ── build ─────────────────────────────────────────────────────────────────────
+# ── push ──────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "Building all targets..."
-make build-all
-
-# ── commit and push ───────────────────────────────────────────────────────────
-
-echo ""
-echo "Committing..."
-git add bin/ "$RELEASES_FILE"
-git commit -m "Release $NEW_TAG: $RELEASE_TITLE"
-
-echo "Pushing main + tag..."
+echo "Pushing main..."
 git push origin main
+
+echo "Pushing tag $NEW_TAG (triggers CI build + GitHub Release)..."
 git push origin "$NEW_TAG"
 
 echo ""
-echo "Done. $NEW_TAG is live."
-echo "Users can upgrade with: em update"
+echo "Done. CI will build binaries and publish the GitHub Release."
+echo "Watch progress at: https://github.com/danlafeir/em/actions"
