@@ -39,7 +39,8 @@ This script will detect your OS and architecture, download the latest pre-built 
 At least one data source must be configured:
 
 - **JIRA Cloud** — API token with read access to your projects
-- **GitHub** — personal access token with `repo` scope; GitHub Actions workflows used for deployment frequency
+- **GitHub** — personal access token with `repo` read scope; GitHub Actions workflows used for deployment frequency
+*You might need a classic token in the Github Enterprise setting*
 - **Snyk** — API token and org ID from your Snyk account
 
 The binary runs on macOS and Linux (amd64/arm64). No runtime dependencies.
