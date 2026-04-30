@@ -282,3 +282,67 @@ func abs(x float64) float64 {
 	}
 	return x
 }
+
+// -- trend functions ----------------------------------------------------------
+
+func TestLastPeriodTrend(t *testing.T) {
+	cases := []struct {
+		name   string
+		values []float64
+		want   string
+	}{
+		{"insufficient data", []float64{5}, ""},
+		{"last period up >10%", []float64{10, 10, 10, 12}, "up"},
+		{"last period down >10%", []float64{10, 10, 10, 8}, "down"},
+		{"last period flat", []float64{10, 10, 10, 10}, "flat"},
+		{"zero prior mean", []float64{0, 0, 5}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := lastPeriodTrend(tc.values); got != tc.want {
+				t.Errorf("lastPeriodTrend(%v) = %q, want %q", tc.values, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCycleTimeTrendFrom_RecentWeek(t *testing.T) {
+	now := time.Now()
+
+	// Issues from 3 weeks ago: 5-day cycle time (baseline)
+	old := func(daysAgo int, ct time.Duration) metrics.CycleTimeResult {
+		end := now.AddDate(0, 0, -daysAgo)
+		return metrics.CycleTimeResult{EndDate: end, CycleTime: ct}
+	}
+
+	day := 24 * time.Hour
+
+	t.Run("recent week faster than prior", func(t *testing.T) {
+		results := []metrics.CycleTimeResult{
+			old(21, 10*day), old(18, 10*day), old(15, 10*day),
+			old(3, 3*day), old(1, 3*day), // last week: 3-day CT
+		}
+		if got := CycleTimeTrendFrom(results); got != "down" {
+			t.Errorf("got %q, want %q (faster = lower CT = down)", got, "down")
+		}
+	})
+
+	t.Run("recent week slower than prior", func(t *testing.T) {
+		results := []metrics.CycleTimeResult{
+			old(21, 3*day), old(18, 3*day), old(15, 3*day),
+			old(3, 10*day), old(1, 10*day), // last week: 10-day CT
+		}
+		if got := CycleTimeTrendFrom(results); got != "up" {
+			t.Errorf("got %q, want %q (slower = higher CT = up)", got, "up")
+		}
+	})
+
+	t.Run("all results within last week returns empty", func(t *testing.T) {
+		results := []metrics.CycleTimeResult{
+			old(3, 5*day), old(1, 5*day),
+		}
+		if got := CycleTimeTrendFrom(results); got != "" {
+			t.Errorf("got %q, want %q (no prior data)", got, "")
+		}
+	})
+}

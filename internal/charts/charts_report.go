@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"sort"
+	"time"
 
 	"github.com/danlafeir/em/pkg/execreport"
 	"github.com/danlafeir/em/pkg/metrics"
@@ -119,28 +120,9 @@ func CombinedTeamReport(
 	})
 }
 
-// halfTrend returns "up", "down", or "flat" by comparing the mean of the second
-// half of values against the first half. Returns "" when there is insufficient data.
-// A change of more than 10% in either direction is considered a trend.
-func halfTrend(values []float64) string {
-	if len(values) < 2 {
-		return ""
-	}
-	mid := len(values) / 2
-	first, second := values[:mid], values[mid:]
-	var a, b float64
-	for _, v := range first {
-		a += v
-	}
-	for _, v := range second {
-		b += v
-	}
-	a /= float64(len(first))
-	b /= float64(len(second))
-	if a == 0 {
-		return ""
-	}
-	change := (b - a) / a
+// trendDirection classifies a fractional change into "up", "down", or "flat".
+// A move of more than 10% in either direction is considered a trend.
+func trendDirection(change float64) string {
 	if change > 0.10 {
 		return "up"
 	}
@@ -150,13 +132,33 @@ func halfTrend(values []float64) string {
 	return "flat"
 }
 
-// PeriodsTrendFrom returns the trend direction for a slice of throughput periods.
+// lastPeriodTrend compares the most recent period's value against the mean of
+// all prior periods. Returns "" when there is insufficient data.
+func lastPeriodTrend(values []float64) string {
+	if len(values) < 2 {
+		return ""
+	}
+	last := values[len(values)-1]
+	prior := values[:len(values)-1]
+	var avg float64
+	for _, v := range prior {
+		avg += v
+	}
+	avg /= float64(len(prior))
+	if avg == 0 {
+		return ""
+	}
+	return trendDirection((last - avg) / avg)
+}
+
+// PeriodsTrendFrom returns the trend direction for a slice of throughput periods
+// by comparing the most recent period against the mean of all prior periods.
 func PeriodsTrendFrom(periods []metrics.ThroughputPeriod) string {
 	vals := make([]float64, len(periods))
 	for i, p := range periods {
 		vals[i] = float64(p.Count)
 	}
-	return halfTrend(vals)
+	return lastPeriodTrend(vals)
 }
 
 // periodsTrend is the unexported alias used within this package.
@@ -165,7 +167,8 @@ func periodsTrend(periods []metrics.ThroughputPeriod) string { return PeriodsTre
 // cycleTimeTrend is the unexported alias used within this package.
 func cycleTimeTrend(results []metrics.CycleTimeResult) string { return CycleTimeTrendFrom(results) }
 
-// CycleTimeTrendFrom returns the trend direction from cycle time results sorted by end date.
+// CycleTimeTrendFrom compares the mean cycle time of issues completed in the
+// most recent 7 days against the mean of all prior issues.
 func CycleTimeTrendFrom(results []metrics.CycleTimeResult) string {
 	if len(results) < 2 {
 		return ""
@@ -175,9 +178,28 @@ func CycleTimeTrendFrom(results []metrics.CycleTimeResult) string {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].EndDate.Before(sorted[j].EndDate)
 	})
-	vals := make([]float64, len(sorted))
-	for i, r := range sorted {
-		vals[i] = r.CycleTime.Hours()
+
+	cutoff := sorted[len(sorted)-1].EndDate.Add(-7 * 24 * time.Hour)
+
+	var recentSum, priorSum float64
+	var recentN, priorN int
+	for _, r := range sorted {
+		h := r.CycleTime.Hours()
+		if r.EndDate.After(cutoff) {
+			recentSum += h
+			recentN++
+		} else {
+			priorSum += h
+			priorN++
+		}
 	}
-	return halfTrend(vals)
+	if recentN == 0 || priorN == 0 {
+		return ""
+	}
+	priorMean := priorSum / float64(priorN)
+	if priorMean == 0 {
+		return ""
+	}
+	recentMean := recentSum / float64(recentN)
+	return trendDirection((recentMean - priorMean) / priorMean)
 }
