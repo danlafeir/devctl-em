@@ -34,6 +34,16 @@ curl -sSL https://raw.githubusercontent.com/danlafeir/em/main/scripts/install.sh
 
 This script will detect your OS and architecture, download the latest pre-built binary, and install it to `~/.local/bin`. Ensure `~/.local/bin` is in your PATH.
 
+### Try it with mock data
+
+No credentials needed to see it in action. The `--mock-upstream` flag spins up in-process mock servers and runs commands against realistic sample data:
+
+```sh
+em metrics report --mock-upstream
+```
+
+This generates a full combined HTML report — JIRA cycle time, throughput, GitHub deployment frequency, and Snyk vulnerability counts — using pre-built mock datasets. Open the output file in a browser to see what a real report looks like before you configure anything.
+
 ## Requirements
 
 At least one data source must be configured:
@@ -55,6 +65,14 @@ make test           # Run all tests
 ```
 
 ## Configuration
+
+Run a single command to configure everything interactively in sequence — JIRA, GitHub, and Snyk — including team setup:
+
+```sh
+em metrics config
+```
+
+This walks through each provider one at a time, verifies credentials against the live API, and stores tokens securely in the system keychain. You can also configure each provider separately if you only need one or want to update a specific one.
 
 Each data source has an interactive setup command that walks you through the required values and stores credentials securely in the system keychain.
 
