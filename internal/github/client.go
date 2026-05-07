@@ -120,7 +120,7 @@ func (c *Client) doGetURL(ctx context.Context, rawURL string) ([]byte, string, e
 	if err != nil {
 		return nil, "", fmt.Errorf("parsing pagination URL: %w", err)
 	}
-	path := u.Path
+	path := strings.TrimPrefix(u.Path, "/")
 	if u.RawQuery != "" {
 		path += "?" + u.RawQuery
 	}
