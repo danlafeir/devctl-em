@@ -148,6 +148,11 @@ func (tc *ThroughputCalculator) generatePeriodsFromEnd(from, to time.Time) []Thr
 	end := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, to.Location())
 	stop := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
 
+	// Same-day range: return a single period covering that day.
+	if !end.After(stop) {
+		return []ThroughputPeriod{{PeriodStart: stop, PeriodEnd: stop.AddDate(0, 0, 1)}}
+	}
+
 	var periods []ThroughputPeriod
 	for end.After(stop) {
 		start := end.AddDate(0, 0, -days)
@@ -244,7 +249,8 @@ func CalculateThroughputStats(result ThroughputResult) ThroughputStats {
 	}
 
 	sort.Ints(counts)
-	medianItems := counts[len(counts)/2]
+	n := len(counts)
+	medianItems := counts[(n-1)/2]
 
 	return ThroughputStats{
 		Periods:     len(result.Periods),

@@ -40,6 +40,18 @@ func TestParseDateRange_Explicit(t *testing.T) {
 	}
 }
 
+func TestParseDateRange_ToIsInclusive(t *testing.T) {
+	_, to, err := parseDateRange("2025-01-15", "2025-03-31", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// An issue completed at noon on the to-date must not be filtered out.
+	noon := time.Date(2025, 3, 31, 12, 0, 0, 0, time.UTC)
+	if noon.After(to) {
+		t.Errorf("noon on to-date %v is after parsed to %v; to-date should be inclusive", noon, to)
+	}
+}
+
 func TestParseDateRange_InvalidFrom(t *testing.T) {
 	if _, _, err := parseDateRange("not-a-date", "", 0); err == nil {
 		t.Fatal("expected error for invalid --from")

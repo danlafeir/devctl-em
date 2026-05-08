@@ -181,6 +181,43 @@ func TestCalculateThroughputStats(t *testing.T) {
 	}
 }
 
+func TestGeneratePeriodsFromEnd_SameDay(t *testing.T) {
+	tc := NewThroughputCalculator(FrequencyWeekly)
+
+	day := time.Date(2024, 6, 19, 0, 0, 0, 0, time.UTC)
+	periods := tc.generatePeriodsFromEnd(day, day)
+
+	if len(periods) != 1 {
+		t.Fatalf("expected 1 period for same-day range, got %d", len(periods))
+	}
+	if !periods[0].PeriodStart.Equal(day) {
+		t.Errorf("PeriodStart = %v, want %v", periods[0].PeriodStart, day)
+	}
+	if !periods[0].PeriodEnd.Equal(day.AddDate(0, 0, 1)) {
+		t.Errorf("PeriodEnd = %v, want %v", periods[0].PeriodEnd, day.AddDate(0, 0, 1))
+	}
+}
+
+func TestCalculateThroughputStats_EvenPeriodMedian(t *testing.T) {
+	result := ThroughputResult{
+		Periods: []ThroughputPeriod{
+			{Count: 1},
+			{Count: 2},
+			{Count: 3},
+			{Count: 4},
+		},
+		TotalCount: 10,
+		AvgCount:   2.5,
+	}
+
+	stats := CalculateThroughputStats(result)
+
+	// sorted: [1,2,3,4] — lower-middle median = 2, not 3 (upper-middle)
+	if stats.MedianItems != 2 {
+		t.Errorf("Expected MedianItems=2 for even-count periods, got %d", stats.MedianItems)
+	}
+}
+
 func TestCalculateThroughputStats_Empty(t *testing.T) {
 	result := ThroughputResult{Periods: []ThroughputPeriod{}}
 	stats := CalculateThroughputStats(result)

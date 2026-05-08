@@ -34,6 +34,7 @@ func parseDateRange(fromStr, toStr string, weeks int) (time.Time, time.Time, err
 		if err != nil {
 			return time.Time{}, time.Time{}, fmt.Errorf("invalid --to date: %w", err)
 		}
+		to = to.Add(24*time.Hour - time.Nanosecond) // include the full to day
 	} else {
 		to = time.Now()
 	}
