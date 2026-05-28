@@ -18,8 +18,9 @@ const Repo = "danlafeir/em"
 
 // Release is a minimal representation of a GitHub Release API response.
 type Release struct {
-	TagName string  `json:"tag_name"`
-	Assets  []Asset `json:"assets"`
+	TagName    string  `json:"tag_name"`
+	PreRelease bool    `json:"prerelease"`
+	Assets     []Asset `json:"assets"`
 }
 
 // Asset is a single downloadable file attached to a release.
@@ -54,6 +55,40 @@ func LatestReleaseFor(repo string) (*Release, error) {
 		return nil, fmt.Errorf("parsing release response: %w", err)
 	}
 	return &r, nil
+}
+
+// LatestPreRelease fetches the most recent pre-release for em.
+// Returns nil, nil when no pre-releases have been published yet.
+func LatestPreRelease() (*Release, error) {
+	return LatestPreReleaseFor(Repo)
+}
+
+// LatestPreReleaseFor fetches the most recent pre-release for the given "owner/repo".
+// Separated for testing.
+func LatestPreReleaseFor(repo string) (*Release, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=20", repo)
+	resp, err := http.Get(url) //nolint:noctx
+	if err != nil {
+		return nil, fmt.Errorf("fetching releases: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == 404 {
+		return nil, nil
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+	}
+	var releases []Release
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("parsing releases response: %w", err)
+	}
+	for _, r := range releases {
+		if r.PreRelease {
+			r := r
+			return &r, nil
+		}
+	}
+	return nil, nil // no pre-releases yet
 }
 
 // IsNewer reports whether tagName is a newer release than currentVersion.
@@ -112,27 +147,55 @@ func AssetURL(assets []Asset) string {
 	return ""
 }
 
-// Run checks for a newer release and, if one exists, downloads it and replaces
-// the running binary. Called by the `em update` command.
-func Run(currentVersion string, cmd *cobra.Command) {
-	release, err := LatestRelease()
+// RunWithChannel checks for a newer release in the given channel ("stable" or
+// "beta") and, if one exists, downloads it and replaces the running binary.
+func RunWithChannel(currentVersion, channel string, cmd *cobra.Command) {
+	var (
+		release *Release
+		err     error
+	)
+	if channel == "beta" {
+		release, err = LatestPreRelease()
+	} else {
+		release, err = LatestRelease()
+	}
 	if err != nil {
 		cmd.PrintErrf("Failed to check for updates: %v\n", err)
 		return
 	}
 	if release == nil {
-		cmd.Println("No releases published yet.")
+		cmd.Printf("No %s releases published yet.\n", channel)
 		return
 	}
 
 	cmd.Printf("Current version: %s\n", currentVersion)
-	cmd.Printf("Latest version:  %s\n", release.TagName)
+	cmd.Printf("Latest %s:  %s\n", channel, release.TagName)
 
-	if !IsNewer(release.TagName, currentVersion) {
-		cmd.Println("Already up to date.")
-		return
+	// Beta channel: update whenever the tag differs, catching beta.1 → beta.2.
+	// Stable channel: use semver comparison so downgrades are not offered.
+	if channel == "beta" {
+		if release.TagName == currentVersion {
+			cmd.Println("Already up to date.")
+			return
+		}
+	} else {
+		if !IsNewer(release.TagName, currentVersion) {
+			cmd.Println("Already up to date.")
+			return
+		}
 	}
 
+	installRelease(release, cmd)
+}
+
+// Run checks for a newer stable release and, if one exists, downloads it and
+// replaces the running binary. Called by the `em update` command.
+func Run(currentVersion string, cmd *cobra.Command) {
+	RunWithChannel(currentVersion, "stable", cmd)
+}
+
+// installRelease downloads and installs the binary from the given release.
+func installRelease(release *Release, cmd *cobra.Command) {
 	url := AssetURL(release.Assets)
 	if url == "" {
 		cmd.PrintErrf("No binary found for %s/%s in release %s.\n",

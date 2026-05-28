@@ -168,6 +168,23 @@ var emConfigSchema = config.ConfigSchema{
 	"snyk.team",
 	"datadog.site",
 	"datadog.team",
+	"update.channel",
+}
+
+// GetUpdateChannel returns the configured update channel ("stable" or "beta").
+// Defaults to "stable" if not set.
+func GetUpdateChannel() string {
+	if getConfigString("update.channel") == "beta" {
+		return "beta"
+	}
+	return "stable"
+}
+
+// SetUpdateChannel saves the update channel preference to config.
+func SetUpdateChannel(channel string) {
+	initConfig()
+	config.SetConfigValue(configNamespace, "update.channel", channel)
+	config.WriteConfig() //nolint:errcheck
 }
 
 // getJiraTeams returns all configured team names that have jira config, or just the --team flag if set.

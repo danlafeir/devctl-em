@@ -21,11 +21,31 @@ var (
 )
 
 // updateCmd downloads and installs the latest GitHub Release of em.
+// An optional channel argument ("stable" or "beta") switches the update
+// channel and persists the choice for future `em update` runs.
 var updateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   "update [channel]",
 	Short: "Update em to the latest version",
+	Long: `Update em to the latest version.
+
+  em update            – update using the current channel (stable by default)
+  em update beta       – switch to the beta channel and update to the latest pre-release
+  em update stable     – switch back to the stable channel`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		selfupdate.Run(BuildVersion, cmd)
+		channel := metrics.GetUpdateChannel()
+		if len(args) == 1 {
+			switch args[0] {
+			case "beta", "stable":
+				channel = args[0]
+				metrics.SetUpdateChannel(channel)
+				cmd.Printf("Switched to %s channel.\n", channel)
+			default:
+				cmd.PrintErrf("Unknown channel %q — use 'stable' or 'beta'.\n", args[0])
+				return
+			}
+		}
+		selfupdate.RunWithChannel(BuildVersion, channel, cmd)
 	},
 }
 
