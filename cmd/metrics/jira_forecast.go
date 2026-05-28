@@ -36,6 +36,7 @@ var (
 	trialsFlag      int
 	historyDaysFlag int
 	allEpicsFlag    bool
+	publishFlag     bool
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	forecastCmd.Flags().IntVar(&trialsFlag, "trials", 10000, "Number of Monte Carlo simulations")
 	forecastCmd.Flags().IntVar(&historyDaysFlag, "history-days", 120, "Days of historical throughput to sample from")
 	forecastCmd.Flags().BoolVar(&allEpicsFlag, "all", false, "Forecast all open epics (default when no other flags)")
+	forecastCmd.Flags().BoolVar(&publishFlag, "publish", false, "Write 85% confidence forecast dates back to each epic's due date in JIRA")
 	registerUpstreamResponseFlag(forecastCmd)
 }
 
@@ -341,6 +343,29 @@ func epicForecastToRow(f EpicForecast) charts.ForecastRow {
 	return row
 }
 
+// publishEpicForecasts writes the 85% confidence forecast date back to each epic's
+// due date field in JIRA. Epics that are already complete or had errors are skipped.
+func publishEpicForecasts(ctx context.Context, client *jira.Client, forecasts []EpicForecast) {
+	fmt.Println("\nPublishing forecast dates to JIRA...")
+	published := 0
+	for _, f := range forecasts {
+		if f.Error != "" || f.RemainingItems == 0 || f.Forecast85.IsZero() {
+			continue
+		}
+		dueDate := f.Forecast85.Format("2006-01-02")
+		err := client.UpdateIssueFields(ctx, f.EpicKey, map[string]any{
+			"duedate": dueDate,
+		})
+		if err != nil {
+			fmt.Printf("  ✗ %s: %v\n", f.EpicKey, err)
+		} else {
+			fmt.Printf("  ✓ %s: due date → %s (85%% confidence)\n", f.EpicKey, dueDate)
+			published++
+		}
+	}
+	fmt.Printf("Published %d epic(s)\n", published)
+}
+
 func runEpicForecasts(ctx context.Context, client *jira.Client, epics []jira.Issue, weeklyThroughput []int, team string, preserveOrder bool) error {
 	fmt.Println("Forecasting epics...")
 	forecasts := computeEpicForecasts(ctx, client, epics, weeklyThroughput, team, preserveOrder)
@@ -405,6 +430,10 @@ func runEpicForecasts(ctx context.Context, client *jira.Client, epics []jira.Iss
 				fmt.Printf("  ✓ All epics forecast to complete before deadline at 85%% confidence\n")
 			}
 		}
+	}
+
+	if publishFlag {
+		publishEpicForecasts(ctx, client, forecasts)
 	}
 
 	// Export HTML chart

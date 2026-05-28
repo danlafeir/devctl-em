@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -51,21 +52,19 @@ func (c *Client) BrowseURL(issueKey string) string {
 	return c.credentials.BaseURL() + "/browse/" + issueKey
 }
 
-// httpAdapter executes a request with authentication and rate limit handling.
-func (c *Client) httpAdapter(ctx context.Context, method, path string, query url.Values) ([]byte, error) {
-	fullURL := c.credentials.BaseURL() + path
-	if len(query) > 0 {
-		fullURL += "?" + query.Encode()
-	}
-
+// doRequest executes a request with authentication, rate limit handling, and optional body.
+func (c *Client) doRequest(ctx context.Context, method, fullURL string, body []byte) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt <= c.rateLimiter.MaxRetries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
+		var bodyReader io.Reader
+		if body != nil {
+			bodyReader = bytes.NewReader(body)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
 
-		// Add Basic Auth header
 		auth := c.credentials.Email + ":" + c.credentials.APIToken
 		encoded := base64.StdEncoding.EncodeToString([]byte(auth))
 		req.Header.Set("Authorization", "Basic "+encoded)
@@ -78,7 +77,7 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 			return nil, fmt.Errorf("executing request: %w", err)
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			return nil, fmt.Errorf("reading response: %w", err)
@@ -86,16 +85,15 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 
 		if c.debug {
 			fmt.Fprintf(os.Stderr, "[debug] JIRA %s %s -> %d (%dms, %d bytes)\n",
-				method, fullURL, resp.StatusCode, time.Since(start).Milliseconds(), len(body))
+				method, fullURL, resp.StatusCode, time.Since(start).Milliseconds(), len(respBody))
 		}
 		if c.dumpResponses {
 			fmt.Fprintf(os.Stderr, "[debug-upstream-response] JIRA %s %s\n%s\n",
-				method, fullURL, string(body))
+				method, fullURL, string(respBody))
 		}
 
-		// Handle rate limiting (429)
 		if resp.StatusCode == 429 {
-			lastErr = httputil.Classify(httputil.ProviderJIRA, resp.StatusCode, body)
+			lastErr = httputil.Classify(httputil.ProviderJIRA, resp.StatusCode, respBody)
 			delay := c.rateLimiter.Backoff(attempt, resp.Header.Get("Retry-After"))
 			select {
 			case <-ctx.Done():
@@ -105,11 +103,10 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 			}
 		}
 
-		// Handle errors
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			excerpt := body
+			excerpt := respBody
 			var errResp ErrorResponse
-			if json.Unmarshal(body, &errResp) == nil && (len(errResp.ErrorMessages) > 0 || len(errResp.Errors) > 0) {
+			if json.Unmarshal(respBody, &errResp) == nil && (len(errResp.ErrorMessages) > 0 || len(errResp.Errors) > 0) {
 				msgs := errResp.ErrorMessages
 				for k, v := range errResp.Errors {
 					msgs = append(msgs, fmt.Sprintf("%s: %s", k, v))
@@ -119,13 +116,34 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 			return nil, httputil.Classify(httputil.ProviderJIRA, resp.StatusCode, excerpt)
 		}
 
-		return body, nil
+		return respBody, nil
 	}
 
 	if lastErr != nil {
 		return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
 	}
 	return nil, fmt.Errorf("max retries exceeded")
+}
+
+// httpAdapter executes a GET-style request (no body) with authentication and rate limit handling.
+func (c *Client) httpAdapter(ctx context.Context, method, path string, query url.Values) ([]byte, error) {
+	fullURL := c.credentials.BaseURL() + path
+	if len(query) > 0 {
+		fullURL += "?" + query.Encode()
+	}
+	return c.doRequest(ctx, method, fullURL, nil)
+}
+
+// UpdateIssueFields updates specific fields on a JIRA issue via PUT.
+func (c *Client) UpdateIssueFields(ctx context.Context, issueKey string, fields map[string]any) error {
+	payload := map[string]any{"fields": fields}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshaling update payload: %w", err)
+	}
+	fullURL := c.credentials.BaseURL() + fmt.Sprintf("/rest/api/3/issue/%s", issueKey)
+	_, err = c.doRequest(ctx, "PUT", fullURL, body)
+	return err
 }
 
 
