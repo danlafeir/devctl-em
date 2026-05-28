@@ -107,8 +107,15 @@ func collectJIRAMetricsData(ctx context.Context, client *jira.Client, team, jql 
 	log("Calculating throughput metrics...\n")
 	throughputResult := computeThroughputFromHistories(completedHistories, mapper, pkgmetrics.FrequencyWeekly, from, to)
 
-	// Longest Cycle Time table — last 2 weeks only
-	ctRows := buildLongestCTRows(recentResults(keptResults, 14), nil, reportLongestCTLimit)
+	// Longest Cycle Time: recent completed + currently in-progress issues
+	jqlInProgress := fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect, Task) AND statusCategory = \"In Progress\"", jql)
+	log("Fetching in-progress issues...\n")
+	ctBase := recentResults(keptResults, 14)
+	if ipIssues, ipErr := client.FetchIssuesWithHistory(ctx, jqlInProgress, nil); ipErr == nil {
+		ipHistories, _ := mapIssuesToHistories(ipIssues)
+		ctBase = append(ctBase, pkgmetrics.NewCycleTimeCalculator(mapper).CalculateInProgress(ipHistories)...)
+	}
+	ctRows := buildLongestCTRows(ctBase, nil, reportLongestCTLimit)
 
 	// Forecast — use 90-day throughput window for Monte Carlo
 	var forecastRows []charts.ForecastRow

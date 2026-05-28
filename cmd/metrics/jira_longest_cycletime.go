@@ -77,8 +77,8 @@ func generateLongestCycleTime(ctx context.Context, client *jira.Client, team, jq
 		fmt.Printf("Removed %d outlier(s) (beyond 2σ from mean)\n", outlierCount)
 	}
 
-	// Also include currently in-progress issues (not yet resolved).
-	jqlInProgress := fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect) AND resolution = Unresolved", jql)
+	// Also include currently in-progress issues.
+	jqlInProgress := fmt.Sprintf("(%s) AND issuetype in (Story, Spike, Bug, Defect, Task) AND statusCategory = \"In Progress\"", jql)
 	fmt.Printf("\nFetching in-progress issues...\n")
 	fmt.Printf("JQL: %s\n", jqlInProgress)
 	historiesIP, _, err := fetchAndMapIssues(ctx, client, jqlInProgress)
