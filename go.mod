@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/cli/go-gh/v2 v2.13.0
-	github.com/danlafeir/cli-go v0.0.0-20260323033014-41f12251a4c7
+	github.com/danlafeir/cli-go v0.0.0-20260601024121-e7cfda68895b
 	github.com/spf13/cobra v1.10.2
 	github.com/xuri/excelize/v2 v2.10.0
 	golang.org/x/term v0.41.0

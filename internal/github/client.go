@@ -273,6 +273,43 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	return err
 }
 
+// SearchPRs searches for pull requests using the GitHub search/issues API.
+// query is a standard GitHub search query, e.g. "is:pr author:alice org:myorg".
+// Pagination is handled automatically via Link headers.
+func (c *Client) SearchPRs(ctx context.Context, query string) ([]PullRequest, error) {
+	q := url.Values{}
+	q.Set("q", query)
+	q.Set("per_page", "100")
+	path := "search/issues?" + q.Encode()
+
+	body, link, err := c.doGet(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("searching PRs: %w", err)
+	}
+
+	var result PRSearchResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parsing PR search result: %w", err)
+	}
+	prs := result.Items
+
+	nextURL := parseLinkHeader(link)
+	for nextURL != "" {
+		body, link, err = c.doGetURL(ctx, nextURL)
+		if err != nil {
+			return nil, fmt.Errorf("searching PRs (pagination): %w", err)
+		}
+		var page PRSearchResult
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, fmt.Errorf("parsing PR search page: %w", err)
+		}
+		prs = append(prs, page.Items...)
+		nextURL = parseLinkHeader(link)
+	}
+
+	return prs, nil
+}
+
 // WhoAmI returns the authenticated GitHub user. Useful for printing a
 // "Connected as ..." line after credentials are saved.
 func (c *Client) WhoAmI(ctx context.Context) (*User, error) {

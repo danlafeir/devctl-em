@@ -77,3 +77,32 @@ type Team struct {
 	Name         string  `json:"name"`
 	Organization TeamOrg `json:"organization"`
 }
+
+// PRUser is the author of a pull request.
+type PRUser struct {
+	Login string `json:"login"`
+}
+
+// PRMeta holds PR-specific fields nested under "pull_request" in search results.
+type PRMeta struct {
+	MergedAt *time.Time `json:"merged_at,omitempty"`
+}
+
+// PullRequest is a GitHub pull request as returned by the search/issues API.
+type PullRequest struct {
+	Number        int        `json:"number"`
+	Title         string     `json:"title"`
+	HTMLURL       string     `json:"html_url"`
+	State         string     `json:"state"`
+	CreatedAt     time.Time  `json:"created_at"`
+	ClosedAt      *time.Time `json:"closed_at,omitempty"`
+	PullRequest   *PRMeta    `json:"pull_request,omitempty"`
+	User          PRUser     `json:"user"`
+	RepositoryURL string     `json:"repository_url"`
+}
+
+// PRSearchResult is the response envelope from the GitHub search/issues API.
+type PRSearchResult struct {
+	TotalCount int           `json:"total_count"`
+	Items      []PullRequest `json:"items"`
+}

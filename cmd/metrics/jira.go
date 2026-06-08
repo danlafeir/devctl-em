@@ -169,6 +169,9 @@ var emConfigSchema = config.ConfigSchema{
 	"datadog.site",
 	"datadog.team",
 	"update.channel",
+	"people.*.display_name",
+	"people.*.jira_email",
+	"people.*.github_username",
 }
 
 // GetUpdateChannel returns the configured update channel ("stable" or "beta").
