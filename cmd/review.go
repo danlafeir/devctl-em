@@ -49,13 +49,20 @@ var reviewAddCmd = &cobra.Command{
 	Short: "Add a person to review reports",
 	Long: `Add a person to the review people list.
 
+If flags are omitted the command runs interactively, looking up candidates from
+configured JIRA and GitHub teams before falling back to manual entry.
+
 Example:
+  em review add
   em review add --name "Alice Smith" --jira-email alice@example.com --github alicesmith`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := strings.TrimSpace(reviewAddName)
 		jiraEmail := strings.TrimSpace(reviewAddJiraEmail)
 		githubUsername := strings.TrimSpace(reviewAddGithubUsername)
-		return addReviewPerson(name, jiraEmail, githubUsername)
+		if name != "" && jiraEmail != "" && githubUsername != "" {
+			return addReviewPerson(name, jiraEmail, githubUsername)
+		}
+		return interactiveAdd(name, jiraEmail, githubUsername)
 	},
 }
 
@@ -143,10 +150,6 @@ func init() {
 	reviewAddCmd.Flags().StringVar(&reviewAddName, "name", "", "Display name")
 	reviewAddCmd.Flags().StringVar(&reviewAddJiraEmail, "jira-email", "", "JIRA email address (used in assignee queries)")
 	reviewAddCmd.Flags().StringVar(&reviewAddGithubUsername, "github", "", "GitHub username")
-	reviewAddCmd.MarkFlagRequired("name")           //nolint:errcheck
-	reviewAddCmd.MarkFlagRequired("jira-email")     //nolint:errcheck
-	reviewAddCmd.MarkFlagRequired("github")         //nolint:errcheck
-
 	reviewCmd.AddCommand(reviewAddCmd)
 	reviewCmd.AddCommand(reviewRemoveCmd)
 	reviewCmd.AddCommand(reviewFetchDataCmd)

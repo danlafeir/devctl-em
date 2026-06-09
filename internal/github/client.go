@@ -127,6 +127,38 @@ func (c *Client) doGetURL(ctx context.Context, rawURL string) ([]byte, string, e
 	return c.doGet(ctx, path)
 }
 
+// ListTeamMembers lists members of a GitHub team, handling Link-header pagination.
+func (c *Client) ListTeamMembers(ctx context.Context, org, teamSlug string) ([]User, error) {
+	path := fmt.Sprintf("orgs/%s/teams/%s/members?per_page=100",
+		url.PathEscape(org), url.PathEscape(teamSlug))
+
+	body, link, err := c.doGet(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("listing team members: %w", err)
+	}
+
+	var members []User
+	if err := json.Unmarshal(body, &members); err != nil {
+		return nil, fmt.Errorf("parsing team members: %w", err)
+	}
+
+	nextURL := parseLinkHeader(link)
+	for nextURL != "" {
+		body, link, err = c.doGetURL(ctx, nextURL)
+		if err != nil {
+			return nil, fmt.Errorf("listing team members (pagination): %w", err)
+		}
+		var page []User
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, fmt.Errorf("parsing team members page: %w", err)
+		}
+		members = append(members, page...)
+		nextURL = parseLinkHeader(link)
+	}
+
+	return members, nil
+}
+
 // ListTeamRepos lists repositories for a team, handling Link-header pagination.
 func (c *Client) ListTeamRepos(ctx context.Context, org, teamSlug string) ([]Repository, error) {
 	path := fmt.Sprintf("orgs/%s/teams/%s/repos?per_page=100",

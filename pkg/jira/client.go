@@ -134,6 +134,32 @@ func (c *Client) httpAdapter(ctx context.Context, method, path string, query url
 	return c.doRequest(ctx, method, fullURL, nil)
 }
 
+// SearchUsers searches for JIRA users by display name or email.
+// Returns only active users with a known email address.
+func (c *Client) SearchUsers(ctx context.Context, query string) ([]User, error) {
+	q := url.Values{}
+	q.Set("query", query)
+	q.Set("maxResults", "10")
+
+	data, err := c.httpAdapter(ctx, "GET", "/rest/api/3/user/search", q)
+	if err != nil {
+		return nil, fmt.Errorf("searching users: %w", err)
+	}
+
+	var users []User
+	if err := json.Unmarshal(data, &users); err != nil {
+		return nil, fmt.Errorf("parsing user search result: %w", err)
+	}
+
+	var active []User
+	for _, u := range users {
+		if u.Active && u.EmailAddress != "" {
+			active = append(active, u)
+		}
+	}
+	return active, nil
+}
+
 // UpdateIssueFields updates specific fields on a JIRA issue via PUT.
 func (c *Client) UpdateIssueFields(ctx context.Context, issueKey string, fields map[string]any) error {
 	payload := map[string]any{"fields": fields}
