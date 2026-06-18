@@ -41,7 +41,7 @@ func interactiveAdd(prefillName, prefillJira, prefillGithub string) error {
 		if p.slug == slug {
 			fmt.Printf("Person %q already exists (jira: %s, github: %s). Update? [y/N]: ", slug, p.jiraEmail, p.githubUsername)
 			line, _ := reader.ReadString('\n')
-			if strings.ToLower(strings.TrimSpace(line)) != "y" {
+			if !affirmative(line, false) {
 				fmt.Println("Cancelled.")
 				return nil
 			}
@@ -53,8 +53,7 @@ func interactiveAdd(prefillName, prefillJira, prefillGithub string) error {
 	fmt.Printf("\n  Name:   %s\n  JIRA:   %s\n  GitHub: %s\n", name, jiraEmail, githubUsername)
 	fmt.Print("Save? [Y/n]: ")
 	line, _ := reader.ReadString('\n')
-	line = strings.ToLower(strings.TrimSpace(line))
-	if line != "" && line != "y" {
+	if !affirmative(line, true) {
 		fmt.Println("Cancelled.")
 		return nil
 	}
@@ -225,6 +224,20 @@ func promptManualJiraEmail(reader *bufio.Reader) (string, error) {
 			return v, nil
 		}
 		fmt.Println("  Must be a valid email address.")
+	}
+}
+
+// affirmative interprets a yes/no reply. Blank input yields defaultYes; "y" and
+// "yes" (any case) are true; anything else is false. Accepting "yes" — not only
+// a bare "y" — keeps a natural affirmative from being read as a cancel.
+func affirmative(reply string, defaultYes bool) bool {
+	switch strings.ToLower(strings.TrimSpace(reply)) {
+	case "":
+		return defaultYes
+	case "y", "yes":
+		return true
+	default:
+		return false
 	}
 }
 
