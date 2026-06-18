@@ -67,6 +67,10 @@ var rootCmd = &cobra.Command{
 	Use:   "em",
 	Short: "Engineering manager CLI tools for metrics and reporting",
 	Long: `em provides CLI tools for engineering managers to generate metrics reports and insights.`,
+	// A RunE returning an error is a runtime failure, not a usage mistake, so
+	// print just the error — not the full usage block. Applies to every
+	// subcommand: cobra suppresses usage if the root or the command sets this.
+	SilenceUsage: true,
 }
 
 // debugFlag is set by the persistent --debug flag on the root command.
