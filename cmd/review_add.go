@@ -162,10 +162,16 @@ func collectGithubUsername(ctx context.Context, reader *bufio.Reader, prefill st
 			continue
 		}
 		for _, m := range members {
-			if !seen[m.Login] {
-				seen[m.Login] = true
-				candidates = append(candidates, candidate{login: m.Login, name: m.Name, team: p.display})
+			if seen[m.Login] {
+				continue
 			}
+			seen[m.Login] = true
+			name := m.Name
+			// The members listing omits display names; fetch the profile to fill it in.
+			if u, err := ghClient.GetUser(ctx, m.Login); err == nil {
+				name = u.Name
+			}
+			candidates = append(candidates, candidate{login: m.Login, name: name, team: p.display})
 		}
 	}
 
@@ -175,7 +181,11 @@ func collectGithubUsername(ctx context.Context, reader *bufio.Reader, prefill st
 	}
 
 	for i, c := range candidates {
-		fmt.Printf("  %d) %s (%s)  — %s\n", i+1, c.login, c.name, c.team)
+		label := c.login
+		if c.name != "" {
+			label += " (" + c.name + ")"
+		}
+		fmt.Printf("  %d) %s  — %s\n", i+1, label, c.team)
 	}
 	fmt.Printf("  %d) Enter manually\n", len(candidates)+1)
 

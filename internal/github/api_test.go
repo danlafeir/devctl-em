@@ -222,6 +222,58 @@ func TestListTeamRepos(t *testing.T) {
 	}
 }
 
+// -- ListTeamMembers ----------------------------------------------------------
+
+func TestListTeamMembers(t *testing.T) {
+	// The members endpoint returns logins but no display name.
+	members := []User{{Login: "alicesmith"}, {Login: "bob-jones"}}
+	body, _ := json.Marshal(members)
+
+	client, ts := newTestClient(t, jsonHandler(string(body)))
+	defer ts.Close()
+
+	result, err := client.ListTeamMembers(context.Background(), "myorg", "platform")
+	if err != nil {
+		t.Fatalf("ListTeamMembers failed: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(result))
+	}
+	if result[0].Login != "alicesmith" {
+		t.Errorf("expected first member 'alicesmith', got %q", result[0].Login)
+	}
+	if result[0].Name != "" {
+		t.Errorf("members endpoint should not carry a name, got %q", result[0].Name)
+	}
+}
+
+// -- GetUser ------------------------------------------------------------------
+
+func TestGetUser_PopulatesName(t *testing.T) {
+	var gotPath string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"login":"alicesmith","name":"Alice Smith"}`)
+	})
+	client, ts := newTestClient(t, handler)
+	defer ts.Close()
+
+	u, err := client.GetUser(context.Background(), "alicesmith")
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+	if u.Name != "Alice Smith" {
+		t.Errorf("Name = %q, want %q", u.Name, "Alice Smith")
+	}
+	if u.Login != "alicesmith" {
+		t.Errorf("Login = %q, want %q", u.Login, "alicesmith")
+	}
+	if !strings.HasSuffix(gotPath, "/users/alicesmith") {
+		t.Errorf("request path = %q, want suffix /users/alicesmith", gotPath)
+	}
+}
+
 // -- HTTP error classification -----------------------------------------------
 
 func TestHTTPErrors_ReturnTypedAPIError(t *testing.T) {

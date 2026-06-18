@@ -159,6 +159,20 @@ func (c *Client) ListTeamMembers(ctx context.Context, org, teamSlug string) ([]U
 	return members, nil
 }
 
+// GetUser fetches a single user's public profile. The team-members listing omits
+// display names, so callers use this to populate the Name field.
+func (c *Client) GetUser(ctx context.Context, login string) (*User, error) {
+	body, _, err := c.doGet(ctx, "users/"+url.PathEscape(login))
+	if err != nil {
+		return nil, fmt.Errorf("getting user %s: %w", login, err)
+	}
+	var u User
+	if err := json.Unmarshal(body, &u); err != nil {
+		return nil, fmt.Errorf("parsing user response: %w", err)
+	}
+	return &u, nil
+}
+
 // ListTeamRepos lists repositories for a team, handling Link-header pagination.
 func (c *Client) ListTeamRepos(ctx context.Context, org, teamSlug string) ([]Repository, error) {
 	path := fmt.Sprintf("orgs/%s/teams/%s/repos?per_page=100",
