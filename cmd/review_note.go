@@ -174,12 +174,7 @@ func openEditorForNote(person *reviewPerson, category, date string) (string, err
 	}
 	f.Close()
 
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vi"
-	}
-
-	editorCmd := exec.Command(editor, tmpPath)
+	editorCmd := editorCommand(tmpPath)
 	editorCmd.Stdin = os.Stdin
 	editorCmd.Stdout = os.Stdout
 	editorCmd.Stderr = os.Stderr
@@ -193,6 +188,19 @@ func openEditorForNote(person *reviewPerson, category, date string) (string, err
 	}
 
 	return stripNoteComments(string(raw)), nil
+}
+
+// editorCommand builds the command that opens path in the user's $EDITOR.
+// $EDITOR commonly carries arguments ("code --wait", "emacsclient -c", "vim -p"),
+// so it is run through the shell instead of being treated as a bare executable
+// name. The path is passed as a positional argument ($1) so it is never subject
+// to shell word-splitting or interpolation.
+func editorCommand(path string) *exec.Cmd {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+	return exec.Command("sh", "-c", editor+` "$1"`, "sh", path)
 }
 
 // stripNoteComments removes lines beginning with '#' and trims surrounding whitespace.
