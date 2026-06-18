@@ -60,6 +60,9 @@ Example:
 		jiraEmail := strings.TrimSpace(reviewAddJiraEmail)
 		githubUsername := strings.TrimSpace(reviewAddGithubUsername)
 		if name != "" && jiraEmail != "" && githubUsername != "" {
+			if err := validateAddFields(jiraEmail, githubUsername); err != nil {
+				return err
+			}
 			return addReviewPerson(name, jiraEmail, githubUsername)
 		}
 		return interactiveAdd(name, jiraEmail, githubUsername)

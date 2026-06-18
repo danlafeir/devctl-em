@@ -13,9 +13,34 @@ import (
 
 var githubUsernameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-]*$`)
 
+// validJiraEmail reports whether s looks like an email address.
+func validJiraEmail(s string) bool { return strings.Contains(s, "@") }
+
+// validGithubUsername reports whether s is a syntactically valid GitHub username.
+func validGithubUsername(s string) bool { return githubUsernameRe.MatchString(s) }
+
+// validateAddFields rejects malformed non-empty values so that bad input
+// supplied via flags is never persisted. Empty values are left for the
+// interactive prompts to collect.
+func validateAddFields(jiraEmail, githubUsername string) error {
+	if jiraEmail != "" && !validJiraEmail(jiraEmail) {
+		return fmt.Errorf("invalid jira email %q: must contain @", jiraEmail)
+	}
+	if githubUsername != "" && !validGithubUsername(githubUsername) {
+		return fmt.Errorf("invalid github username %q: must contain only letters, numbers, and hyphens", githubUsername)
+	}
+	return nil
+}
+
 func interactiveAdd(prefillName, prefillJira, prefillGithub string) error {
 	reader := bufio.NewReader(os.Stdin)
 	ctx := context.Background()
+
+	// Reject malformed prefills up front so the user isn't sent through the
+	// whole flow only to fail at save.
+	if err := validateAddFields(prefillJira, prefillGithub); err != nil {
+		return err
+	}
 
 	// --- Name ---
 	name, err := promptName(reader, prefillName)
@@ -230,7 +255,7 @@ func promptManualJiraEmail(reader *bufio.Reader) (string, error) {
 			return "", err
 		}
 		v := strings.TrimSpace(line)
-		if strings.Contains(v, "@") {
+		if validJiraEmail(v) {
 			return v, nil
 		}
 		fmt.Println("  Must be a valid email address.")
@@ -259,7 +284,7 @@ func promptManualGithubUsername(reader *bufio.Reader) (string, error) {
 			return "", err
 		}
 		v := strings.TrimSpace(line)
-		if githubUsernameRe.MatchString(v) {
+		if validGithubUsername(v) {
 			return v, nil
 		}
 		fmt.Println("  Must be non-empty and contain only letters, numbers, and hyphens.")
