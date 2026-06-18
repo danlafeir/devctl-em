@@ -69,22 +69,12 @@ func init() {
 }
 
 func runReviewFetchData(cmd *cobra.Command, args []string) error {
-	slug := strings.ToLower(strings.TrimSpace(args[0]))
-
-	people := getReviewPeople()
-	var person *reviewPerson
-	for i, p := range people {
-		if p.slug == slug || strings.ToLower(p.displayName) == slug {
-			person = &people[i]
-			break
-		}
-	}
-	if person == nil {
-		return fmt.Errorf("person %q not found. Use 'em review add' to add them first", args[0])
+	person, err := resolveReviewPerson(args[0])
+	if err != nil {
+		return err
 	}
 
 	var from, to time.Time
-	var err error
 	if fetchFromFlag != "" {
 		if from, err = time.Parse("2006-01-02", fetchFromFlag); err != nil {
 			return fmt.Errorf("invalid --from date: %w", err)
